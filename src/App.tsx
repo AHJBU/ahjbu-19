@@ -17,6 +17,11 @@ import Courses from "./pages/Courses";
 import Achievements from "./pages/Achievements";
 import Publications from "./pages/Publications";
 import Files from "./pages/Files";
+import Dashboard from "./pages/dashboard/Dashboard";
+import DashboardBlog from "./pages/dashboard/DashboardBlog";
+import DashboardProjects from "./pages/dashboard/DashboardProjects";
+import DashboardSettings from "./pages/dashboard/DashboardSettings";
+import BlogEditor from "./pages/dashboard/BlogEditor";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +44,14 @@ const App = () => (
               <Route path="/achievements" element={<Achievements />} />
               <Route path="/publications" element={<Publications />} />
               <Route path="/files" element={<Files />} />
+              
+              {/* Dashboard Routes */}
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/blog" element={<DashboardBlog />} />
+              <Route path="/dashboard/blog/editor/:id?" element={<BlogEditor />} />
+              <Route path="/dashboard/projects" element={<DashboardProjects />} />
+              <Route path="/dashboard/settings" element={<DashboardSettings />} />
+              
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

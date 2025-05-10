@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -18,7 +17,7 @@ import {
   FileText,
   FileImage,
   FileCode,
-  FilePdf 
+  File
 } from "lucide-react";
 
 interface File {
@@ -115,7 +114,7 @@ const getFileTypes = (): string[] => {
 const getFileIcon = (fileType: string) => {
   switch (fileType.toLowerCase()) {
     case "pdf":
-      return <FilePdf className="h-6 w-6 text-red-500" />;
+      return <File className="h-6 w-6 text-red-500" />;
     case "zip":
       return <FileCode className="h-6 w-6 text-blue-500" />;
     case "png":
