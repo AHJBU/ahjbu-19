@@ -11,7 +11,8 @@ import {
   getAchievementsByYear, 
   getAchievementCategories 
 } from "@/data/achievements";
-import { Award, Calendar, Filter } from "lucide-react";
+import { Award, Calendar, Filter, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const Achievements = () => {
   const { language } = useLanguage();
