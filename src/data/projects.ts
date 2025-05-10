@@ -10,6 +10,8 @@ export interface ProjectType {
   link?: string;
   github?: string;
   featured: boolean;
+  technologies: string[];
+  year: string;
 }
 
 export const projects: ProjectType[] = [
@@ -24,6 +26,8 @@ export const projects: ProjectType[] = [
     link: "https://project-ecommerce.example.com",
     github: "https://github.com/username/ecommerce",
     featured: true,
+    technologies: ["React", "Node.js", "MongoDB", "Stripe"],
+    year: "2023",
   },
   {
     id: "2",
@@ -36,6 +40,8 @@ export const projects: ProjectType[] = [
     link: "https://task-manager.example.com",
     github: "https://github.com/username/task-manager",
     featured: true,
+    technologies: ["React", "Firebase", "Material UI"],
+    year: "2023",
   },
   {
     id: "3",
@@ -48,6 +54,8 @@ export const projects: ProjectType[] = [
     link: "https://ai-images.example.com",
     github: "https://github.com/username/ai-image-generator",
     featured: true,
+    technologies: ["Python", "React", "TensorFlow", "API"],
+    year: "2022",
   },
   {
     id: "4",
@@ -60,6 +68,8 @@ export const projects: ProjectType[] = [
     link: "https://portfolio.example.com",
     github: "https://github.com/username/portfolio",
     featured: false,
+    technologies: ["React", "Tailwind CSS", "Vite"],
+    year: "2022",
   },
   {
     id: "5",
@@ -72,6 +82,8 @@ export const projects: ProjectType[] = [
     link: "https://weather-app.example.com",
     github: "https://github.com/username/weather-app",
     featured: false,
+    technologies: ["React", "OpenWeather API", "CSS"],
+    year: "2021",
   },
   {
     id: "6",
@@ -84,5 +96,7 @@ export const projects: ProjectType[] = [
     link: "https://recipe-finder.example.com",
     github: "https://github.com/username/recipe-finder",
     featured: false,
+    technologies: ["JavaScript", "API", "CSS"],
+    year: "2021",
   },
 ];
