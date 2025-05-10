@@ -8,11 +8,22 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Search, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from "@/components/ui/pagination";
+
+const POSTS_PER_PAGE = 6;
 
 const Blog = () => {
   const { language, t } = useLanguage();
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Extract unique tags from posts
   const uniqueTags = Array.from(
@@ -33,6 +44,18 @@ const Blog = () => {
         post.tags.some(tag => tag.toLowerCase().includes(searchTerm))
       );
     });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+  const paginatedPosts = filteredPosts.slice(
+    (currentPage - 1) * POSTS_PER_PAGE,
+    currentPage * POSTS_PER_PAGE
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -60,7 +83,10 @@ const Blog = () => {
                   type="text"
                   placeholder={language === "en" ? "Search posts..." : "ابحث في المقالات..."}
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1); // Reset to first page on search
+                  }}
                   className="pl-10"
                 />
               </div>
@@ -70,7 +96,10 @@ const Blog = () => {
             <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
               <Button
                 variant={activeTag === null ? "default" : "outline"}
-                onClick={() => setActiveTag(null)}
+                onClick={() => {
+                  setActiveTag(null);
+                  setCurrentPage(1); // Reset to first page on tag change
+                }}
                 size="sm"
               >
                 {language === "en" ? "All" : "الكل"}
@@ -80,7 +109,10 @@ const Blog = () => {
                 <Button
                   key={tag}
                   variant={activeTag === tag ? "default" : "outline"}
-                  onClick={() => setActiveTag(tag)}
+                  onClick={() => {
+                    setActiveTag(tag);
+                    setCurrentPage(1); // Reset to first page on tag change
+                  }}
                   size="sm"
                 >
                   {tag}
@@ -90,7 +122,7 @@ const Blog = () => {
 
             {/* Posts grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredPosts.map((post) => (
+              {paginatedPosts.map((post) => (
                 <Link 
                   key={post.id}
                   to={`/blog/${post.id}`} 
@@ -135,6 +167,40 @@ const Blog = () => {
                     : "لا توجد مقالات تطابق بحثك."
                   }
                 </p>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {filteredPosts.length > 0 && totalPages > 1 && (
+              <div className="mt-12">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                        className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    
+                    {Array.from({ length: totalPages }).map((_, i) => (
+                      <PaginationItem key={i}>
+                        <PaginationLink 
+                          isActive={currentPage === i + 1}
+                          onClick={() => handlePageChange(i + 1)}
+                        >
+                          {i + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                        className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
             )}
           </div>
