@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -18,15 +19,30 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/use-toast";
 
 const DashboardProjects = () => {
   const { language } = useLanguage();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   
   const filteredProjects = projects.filter(project => {
     const title = language === "en" ? project.title : project.titleAr;
     return title.toLowerCase().includes(searchQuery.toLowerCase());
   });
+  
+  const handleDelete = (id: string) => {
+    // This would delete from database in a real implementation
+    console.log(`Delete project with ID: ${id}`);
+    
+    toast({
+      title: language === "en" ? "Project deleted" : "تم حذف المشروع",
+      description: language === "en" 
+        ? "The project has been deleted successfully" 
+        : "تم حذف المشروع بنجاح",
+    });
+  };
 
   return (
     <DashboardLayout 
@@ -46,7 +62,7 @@ const DashboardProjects = () => {
           />
         </div>
         
-        <Button>
+        <Button onClick={() => navigate("/dashboard/projects/editor")}>
           <Plus className="h-4 w-4 mr-2" />
           {language === "en" ? "New Project" : "مشروع جديد"}
         </Button>
@@ -75,15 +91,22 @@ const DashboardProjects = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Eye className="mr-2 h-4 w-4" />
-                      {language === "en" ? "View" : "عرض"}
+                    <DropdownMenuItem asChild>
+                      <Link to={`/projects/${project.id}`} className="flex items-center">
+                        <Eye className="mr-2 h-4 w-4" />
+                        {language === "en" ? "View" : "عرض"}
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      {language === "en" ? "Edit" : "تعديل"}
+                    <DropdownMenuItem asChild>
+                      <Link to={`/dashboard/projects/editor/${project.id}`} className="flex items-center">
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {language === "en" ? "Edit" : "تعديل"}
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-500 focus:text-red-500">
+                    <DropdownMenuItem 
+                      className="text-red-500 focus:text-red-500"
+                      onClick={() => handleDelete(project.id)}
+                    >
                       <Trash2 className="mr-2 h-4 w-4" />
                       {language === "en" ? "Delete" : "حذف"}
                     </DropdownMenuItem>
@@ -108,7 +131,11 @@ const DashboardProjects = () => {
               <span className="text-sm text-muted-foreground">
                 {project.year}
               </span>
-              <Button size="sm" variant="outline">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => navigate(`/dashboard/projects/editor/${project.id}`)}
+              >
                 <Pencil className="h-4 w-4 mr-2" />
                 {language === "en" ? "Edit" : "تعديل"}
               </Button>

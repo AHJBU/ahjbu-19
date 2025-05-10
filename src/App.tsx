@@ -22,6 +22,7 @@ import DashboardBlog from "./pages/dashboard/DashboardBlog";
 import DashboardProjects from "./pages/dashboard/DashboardProjects";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
 import BlogEditor from "./pages/dashboard/BlogEditor";
+import ProjectEditor from "./pages/dashboard/ProjectEditor";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/dashboard/blog" element={<DashboardBlog />} />
               <Route path="/dashboard/blog/editor/:id?" element={<BlogEditor />} />
               <Route path="/dashboard/projects" element={<DashboardProjects />} />
+              <Route path="/dashboard/projects/editor/:id?" element={<ProjectEditor />} />
               <Route path="/dashboard/settings" element={<DashboardSettings />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
