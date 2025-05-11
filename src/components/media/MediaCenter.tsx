@@ -1,24 +1,13 @@
-
 import { useState, useEffect } from "react";
-import { storage } from "@/lib/firebase";
-import { ref, listAll, getDownloadURL, deleteObject, getMetadata } from "firebase/storage";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { MediaUpload } from "./MediaUpload";
 import { Search, Trash, FileImage, FileVideo, File, Download } from "lucide-react";
-
-interface MediaItem {
-  name: string;
-  url: string;
-  fullPath: string;
-  contentType: string;
-  size: number;
-  timeCreated: string;
-}
+import { MediaItem, getMediaFromFolder, deleteFile } from "@/services/mysql-file-service"; 
+import { FileUploader } from "../files/FileUploader";
 
 interface MediaCenterProps {
   onSelect?: (url: string) => void;
@@ -32,7 +21,7 @@ export function MediaCenter({ onSelect }: MediaCenterProps) {
   const [activeTab, setActiveTab] = useState("images");
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
 
-  // Function to load media from Firebase
+  // Function to load media from MySQL
   const loadMedia = async () => {
     setIsLoading(true);
     try {
@@ -46,24 +35,7 @@ export function MediaCenter({ onSelect }: MediaCenterProps) {
         folderPath = "files";
       }
 
-      const storageRef = ref(storage, folderPath);
-      const result = await listAll(storageRef);
-      
-      const mediaPromises = result.items.map(async (item) => {
-        const url = await getDownloadURL(item);
-        const metadata = await getMetadata(item);
-        
-        return {
-          name: item.name,
-          url,
-          fullPath: item.fullPath,
-          contentType: metadata.contentType || "",
-          size: metadata.size || 0,
-          timeCreated: metadata.timeCreated || "",
-        };
-      });
-
-      const mediaData = await Promise.all(mediaPromises);
+      const mediaData = await getMediaFromFolder(folderPath);
       setMediaItems(mediaData);
     } catch (error) {
       console.error("Error loading media:", error);
@@ -81,14 +53,23 @@ export function MediaCenter({ onSelect }: MediaCenterProps) {
     loadMedia();
   }, [activeTab]);
 
-  const handleUploadComplete = (url: string) => {
-    loadMedia(); // Refresh the media list
+  const handleUploadComplete = (url: string, path: string, contentType: string, size: number) => {
+    // Add the new file to the list
+    const newItem: MediaItem = {
+      name: path.split('/').pop() || 'unknown',
+      url: url,
+      fullPath: path,
+      contentType: contentType,
+      size: size,
+      timeCreated: new Date().toISOString()
+    };
+    
+    setMediaItems(prev => [newItem, ...prev]);
   };
 
   const handleDelete = async (item: MediaItem) => {
     try {
-      const fileRef = ref(storage, item.fullPath);
-      await deleteObject(fileRef);
+      await deleteFile(item.fullPath);
       
       toast({
         title: language === "en" ? "File deleted" : "تم حذف الملف",
@@ -172,9 +153,11 @@ export function MediaCenter({ onSelect }: MediaCenterProps) {
               <h3 className="text-lg font-medium mb-4">
                 {language === "en" ? "Upload New" : "رفع جديد"}
               </h3>
-              <MediaUpload 
+              <FileUploader
                 folder={tab}
-                onUploadComplete={handleUploadComplete}
+                onUploadComplete={(url, path, contentType, size) => {
+                  handleUploadComplete(url, path, contentType, size);
+                }}
                 accept={tab === "images" ? "image/*" : tab === "videos" ? "video/*" : "*/*"}
                 maxSizeMB={tab === "videos" ? 50 : 10}
               />

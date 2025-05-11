@@ -8,7 +8,7 @@ import { Image as ImageIcon } from "lucide-react";
 
 export interface MediaSelectorProps {
   value?: string;
-  onValueChange: (value: string) => void; // Added this line to fix the error
+  onValueChange: (value: string) => void;
 }
 
 export function MediaSelector({ value, onValueChange }: MediaSelectorProps) {
