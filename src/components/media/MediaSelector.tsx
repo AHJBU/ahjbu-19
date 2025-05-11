@@ -9,15 +9,22 @@ import { Image as ImageIcon } from "lucide-react";
 export interface MediaSelectorProps {
   value?: string;
   onValueChange: (value: string) => void;
+  onChange?: (value: string) => void; // Add backward compatibility
   type?: string;
 }
 
-export function MediaSelector({ value, onValueChange, type = "image" }: MediaSelectorProps) {
+export function MediaSelector({ value, onValueChange, onChange, type = "image" }: MediaSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value || "");
 
-  const handleSelect = (url: string) => {
+  // Handle both onChange and onValueChange for backward compatibility
+  const handleChange = (url: string) => {
+    if (onChange) onChange(url);
     onValueChange(url);
+  };
+
+  const handleSelect = (url: string) => {
+    handleChange(url);
     setIsOpen(false);
   };
 
@@ -26,7 +33,7 @@ export function MediaSelector({ value, onValueChange, type = "image" }: MediaSel
   };
 
   const handleInputConfirm = () => {
-    onValueChange(inputValue);
+    handleChange(inputValue);
   };
 
   return (

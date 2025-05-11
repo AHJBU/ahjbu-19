@@ -18,9 +18,9 @@ export interface CourseDbModel {
   currency: string;
   duration: number;
   lessons: number;
-  is_free: boolean;
-  show_orders: boolean;
-  featured: boolean;
+  is_free: number; // Changed to number for MySQL compatibility
+  show_orders: number; // Changed to number for MySQL compatibility
+  featured: number; // Changed to number for MySQL compatibility
   students: number;
   tags: string;
   created_at: string;
@@ -44,9 +44,9 @@ const mapDbToCourse = (dbCourse: CourseDbModel): Course => {
     currency: dbCourse.currency,
     duration: dbCourse.duration,
     lessons: dbCourse.lessons,
-    isFree: dbCourse.is_free === 1,
-    showOrders: dbCourse.show_orders === 1,
-    featured: dbCourse.featured === 1,
+    isFree: Boolean(dbCourse.is_free), // Convert number to boolean
+    showOrders: Boolean(dbCourse.show_orders), // Convert number to boolean
+    featured: Boolean(dbCourse.featured), // Convert number to boolean
     students: dbCourse.students,
     tags: dbCourse.tags ? JSON.parse(dbCourse.tags) : [],
     created_at: dbCourse.created_at,
