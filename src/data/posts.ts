@@ -11,6 +11,7 @@ export interface PostType {
   date: string;
   author: string;
   tags: string[];
+  featured: boolean;
   created_at?: string;
   updated_at?: string;
 }
