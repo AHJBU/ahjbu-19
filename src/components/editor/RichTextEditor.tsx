@@ -71,19 +71,21 @@ export function RichTextEditor({
         placeholder={placeholder || (language === 'en' ? 'Write something...' : 'اكتب شيئًا...')}
         style={{ height, direction: dir }}
       />
-      <style jsx global>{`
-        .rich-text-editor .ql-container {
-          min-height: ${height - 42}px;
-          font-size: 16px;
-        }
-        .rich-text-editor .ql-editor {
-          min-height: ${height - 42}px;
-          direction: ${dir};
-        }
-        .rich-text-editor .ql-toolbar {
-          direction: ltr;
-        }
-      `}</style>
+      <style jsx global>
+        {`
+          .rich-text-editor .ql-container {
+            min-height: ${height - 42}px;
+            font-size: 16px;
+          }
+          .rich-text-editor .ql-editor {
+            min-height: ${height - 42}px;
+            direction: ${dir};
+          }
+          .rich-text-editor .ql-toolbar {
+            direction: ltr;
+          }
+        `}
+      </style>
     </div>
   );
 }

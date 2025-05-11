@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -56,29 +55,32 @@ const BlogEditor = () => {
     queryKey: ['post', id],
     queryFn: () => getPost(id as string),
     enabled: !!id,
-    onSuccess: (data) => {
-      setFormData({
-        title: data.title,
-        titleAr: data.titleAr,
-        excerpt: data.excerpt,
-        excerptAr: data.excerptAr,
-        content: data.content,
-        contentAr: data.contentAr,
-        image: data.image,
-        date: data.date,
-        author: data.author,
-        tags: [...data.tags],
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: language === "en" ? "Post not found" : "لم يتم العثور على المنشور",
-        description: language === "en" 
-          ? "The post you're trying to edit does not exist" 
-          : "المنشور الذي تحاول تعديله غير موجود",
-        variant: "destructive"
-      });
-      navigate("/dashboard/blog");
+    onSettled: (data, error) => {
+      if (data) {
+        setFormData({
+          title: data.title,
+          titleAr: data.titleAr,
+          excerpt: data.excerpt,
+          excerptAr: data.excerptAr,
+          content: data.content,
+          contentAr: data.contentAr,
+          image: data.image,
+          date: data.date,
+          author: data.author,
+          tags: [...data.tags],
+        });
+      }
+      
+      if (error) {
+        toast({
+          title: language === "en" ? "Post not found" : "لم يتم العثور على المنشور",
+          description: language === "en" 
+            ? "The post you're trying to edit does not exist" 
+            : "المنشور الذي تحاول تعديله غير موجود",
+          variant: "destructive"
+        });
+        navigate("/dashboard/blog");
+      }
     }
   });
   

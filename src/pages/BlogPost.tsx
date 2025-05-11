@@ -1,4 +1,3 @@
-
 import { useParams, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -80,15 +79,15 @@ const BlogPost = () => {
             {/* Header */}
             <header className="max-w-3xl mx-auto mb-8">
               <h1 className="text-3xl md:text-4xl font-bold mb-6">
-                {language === "en" ? post.title : post.titleAr}
+                {language === "en" ? post?.title : post?.titleAr}
               </h1>
 
               <div className="flex items-center justify-between text-muted-foreground">
                 <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                  <span className="font-medium">{post.author}</span>
+                  <span className="font-medium">{post?.author}</span>
                 </div>
-                <time dateTime={post.date}>
-                  {new Date(post.date).toLocaleDateString(
+                <time dateTime={post?.date}>
+                  {post?.date && new Date(post.date).toLocaleDateString(
                     language === "en" ? "en-US" : "ar-SA",
                     { year: "numeric", month: "long", day: "numeric" }
                   )}
@@ -100,8 +99,8 @@ const BlogPost = () => {
             <div className="max-w-4xl mx-auto mb-12">
               <div className="aspect-video rounded-lg overflow-hidden">
                 <img
-                  src={post.image}
-                  alt={language === "en" ? post.title : post.titleAr}
+                  src={post?.image}
+                  alt={language === "en" ? post?.title : post?.titleAr}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -112,16 +111,16 @@ const BlogPost = () => {
               <div className="ql-snow">
                 <div className="ql-editor">
                   {language === "en" ? (
-                    <div dangerouslySetInnerHTML={{ __html: post.content }} />
+                    <div dangerouslySetInnerHTML={{ __html: post?.content || "" }} />
                   ) : (
-                    <div dir="rtl" dangerouslySetInnerHTML={{ __html: post.contentAr }} />
+                    <div dir="rtl" dangerouslySetInnerHTML={{ __html: post?.contentAr || "" }} />
                   )}
                 </div>
               </div>
               
               {/* Tags */}
               <div className="flex flex-wrap gap-2 mt-8 py-4 border-t">
-                {post.tags.map((tag) => (
+                {post?.tags.map((tag) => (
                   <Link
                     key={tag}
                     to={`/blog?tag=${tag}`}
