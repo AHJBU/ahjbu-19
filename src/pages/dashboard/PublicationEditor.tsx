@@ -7,17 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
 import { MediaSelector } from "@/components/media/MediaSelector";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPublication, createPublication, updatePublication } from "@/services/publication-service";
-import { getProjects } from "@/services/supabase-service";
-import { getPosts } from "@/services/supabase-service";
 import { Publication } from "@/types/publication";
-import { ProjectType } from "@/data/projects";
-import { PostType } from "@/data/posts";
 import {
   Select,
   SelectContent,
@@ -43,12 +40,10 @@ const PublicationEditor = () => {
     publishedIn: "",
     publishedInAr: "",
     date: new Date().toISOString().split('T')[0],
-    category: "Journal",
+    category: "Journal Article",
     link: "",
-    relatedProjectId: "",
-    relatedPostId: "",
-    image: "",
-    featured: false
+    featured: false,
+    archived: false
   });
 
   // Fetch publication data if in edit mode
@@ -56,18 +51,6 @@ const PublicationEditor = () => {
     queryKey: ['publication', id],
     queryFn: () => getPublication(id!),
     enabled: !!id
-  });
-
-  // Fetch projects for linking
-  const { data: projects = [] } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects
-  });
-
-  // Fetch posts for linking
-  const { data: posts = [] } = useQuery({
-    queryKey: ['posts'],
-    queryFn: getPosts
   });
 
   // Set publication data when fetched
@@ -119,6 +102,17 @@ const PublicationEditor = () => {
     setPublication(prev => ({ ...prev, image: url }));
   };
 
+  const categories = [
+    "Journal Article",
+    "Conference Paper",
+    "Book Chapter",
+    "Book",
+    "Thesis",
+    "Report",
+    "Patent",
+    "Other"
+  ];
+
   return (
     <DashboardLayout 
       title={language === "en" 
@@ -165,11 +159,11 @@ const PublicationEditor = () => {
                       
                       <div>
                         <Label htmlFor="abstract">Abstract</Label>
-                        <Input
+                        <Textarea
                           id="abstract"
                           value={publication.abstract}
                           onChange={(e) => setPublication({ ...publication, abstract: e.target.value })}
-                          className="mt-1"
+                          className="mt-1 min-h-[150px]"
                           required
                         />
                       </div>
@@ -181,6 +175,7 @@ const PublicationEditor = () => {
                           value={publication.authors}
                           onChange={(e) => setPublication({ ...publication, authors: e.target.value })}
                           className="mt-1"
+                          placeholder="e.g. John Doe, Jane Smith"
                           required
                         />
                       </div>
@@ -192,6 +187,7 @@ const PublicationEditor = () => {
                           value={publication.publishedIn}
                           onChange={(e) => setPublication({ ...publication, publishedIn: e.target.value })}
                           className="mt-1"
+                          placeholder="e.g. Journal of Science, Conference on AI"
                           required
                         />
                       </div>
@@ -213,11 +209,11 @@ const PublicationEditor = () => {
                       
                       <div>
                         <Label htmlFor="abstractAr">الملخص</Label>
-                        <Input
+                        <Textarea
                           id="abstractAr"
                           value={publication.abstractAr}
                           onChange={(e) => setPublication({ ...publication, abstractAr: e.target.value })}
-                          className="mt-1"
+                          className="mt-1 min-h-[150px]"
                           dir="rtl"
                           required
                         />
@@ -231,6 +227,7 @@ const PublicationEditor = () => {
                           onChange={(e) => setPublication({ ...publication, authorsAr: e.target.value })}
                           className="mt-1"
                           dir="rtl"
+                          placeholder="مثال: محمد أحمد، فاطمة علي"
                           required
                         />
                       </div>
@@ -243,6 +240,7 @@ const PublicationEditor = () => {
                           onChange={(e) => setPublication({ ...publication, publishedInAr: e.target.value })}
                           className="mt-1"
                           dir="rtl"
+                          placeholder="مثال: مجلة العلوم، مؤتمر الذكاء الاصطناعي"
                           required
                         />
                       </div>
@@ -271,7 +269,7 @@ const PublicationEditor = () => {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="category">
-                        {language === "en" ? "Category" : "التصنيف"}
+                        {language === "en" ? "Category" : "الفئة"}
                       </Label>
                       <Select
                         value={publication.category}
@@ -281,34 +279,18 @@ const PublicationEditor = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Journal">
-                            {language === "en" ? "Journal" : "مجلة علمية"}
-                          </SelectItem>
-                          <SelectItem value="Conference">
-                            {language === "en" ? "Conference" : "مؤتمر"}
-                          </SelectItem>
-                          <SelectItem value="Book">
-                            {language === "en" ? "Book" : "كتاب"}
-                          </SelectItem>
-                          <SelectItem value="Book Chapter">
-                            {language === "en" ? "Book Chapter" : "فصل كتاب"}
-                          </SelectItem>
-                          <SelectItem value="Workshop">
-                            {language === "en" ? "Workshop" : "ورشة عمل"}
-                          </SelectItem>
-                          <SelectItem value="Preprint">
-                            {language === "en" ? "Preprint" : "منشور أولي"}
-                          </SelectItem>
-                          <SelectItem value="Media">
-                            {language === "en" ? "Media" : "وسائل إعلام"}
-                          </SelectItem>
+                          {categories.map(category => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                     
                     <div>
                       <Label htmlFor="date">
-                        {language === "en" ? "Date" : "التاريخ"}
+                        {language === "en" ? "Publication Date" : "تاريخ النشر"}
                       </Label>
                       <Input
                         id="date"
@@ -333,59 +315,30 @@ const PublicationEditor = () => {
                       />
                     </div>
                     
-                    {/* Related Content */}
-                    <div className="space-y-4 pt-4">
-                      <h3 className="text-sm font-medium">
-                        {language === "en" ? "Related Content" : "محتوى ذو صلة"}
-                      </h3>
-                      
-                      <div>
-                        <Label htmlFor="relatedProjectId">
-                          {language === "en" ? "Related Project" : "مشروع ذو صلة"}
-                        </Label>
-                        <Select
-                          value={publication.relatedProjectId ?? ""}
-                          onValueChange={(value) => setPublication({ ...publication, relatedProjectId: value || undefined })}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={language === "en" ? "Select a project" : "اختر مشروع"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">
-                              {language === "en" ? "None" : "لا يوجد"}
-                            </SelectItem>
-                            {projects.map((project: ProjectType) => (
-                              <SelectItem key={project.id} value={project.id}>
-                                {language === "en" ? project.title : project.titleAr}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="relatedPostId">
-                          {language === "en" ? "Related Post" : "مقالة ذات صلة"}
-                        </Label>
-                        <Select
-                          value={publication.relatedPostId ?? ""}
-                          onValueChange={(value) => setPublication({ ...publication, relatedPostId: value || undefined })}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={language === "en" ? "Select a post" : "اختر مقالة"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">
-                              {language === "en" ? "None" : "لا يوجد"}
-                            </SelectItem>
-                            {posts.map((post: PostType) => (
-                              <SelectItem key={post.id} value={post.id}>
-                                {language === "en" ? post.title : post.titleAr}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div>
+                      <Label htmlFor="relatedProjectId">
+                        {language === "en" ? "Related Project ID" : "معرف المشروع المرتبط"}
+                      </Label>
+                      <Input
+                        id="relatedProjectId"
+                        value={publication.relatedProjectId || ""}
+                        onChange={(e) => setPublication({ ...publication, relatedProjectId: e.target.value })}
+                        className="mt-1"
+                        placeholder="project-123"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="relatedPostId">
+                        {language === "en" ? "Related Post ID" : "معرف المنشور المرتبط"}
+                      </Label>
+                      <Input
+                        id="relatedPostId"
+                        value={publication.relatedPostId || ""}
+                        onChange={(e) => setPublication({ ...publication, relatedPostId: e.target.value })}
+                        className="mt-1"
+                        placeholder="post-123"
+                      />
                     </div>
                     
                     {/* Featured setting */}

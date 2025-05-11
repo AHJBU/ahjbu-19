@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getPublications, deletePublication } from "@/services/publication-service";
+import { getPublications, deletePublication, archivePublication, restorePublication } from "@/services/publication-service";
 import { Publication } from "@/types/publication";
 import { toast } from "@/components/ui/use-toast";
 import {
@@ -36,15 +36,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, MoreVertical, PlusCircle, Edit, Trash, Link as LinkIcon, ExternalLink, Star } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, MoreVertical, PlusCircle, Edit, Trash, Archive, RefreshCw, Calendar, ExternalLink, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DashboardPublications = () => {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("active");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [publicationToDelete, setPublicationToDelete] = useState<string | null>(null);
 
@@ -52,6 +53,34 @@ const DashboardPublications = () => {
   const { data: publications = [], isLoading } = useQuery({
     queryKey: ['publications'],
     queryFn: getPublications
+  });
+
+  // Archive publication mutation
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => archivePublication(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['publications'] });
+      toast({
+        title: language === "en" ? "Publication Archived" : "تم أرشفة المنشور",
+        description: language === "en"
+          ? "The publication has been archived successfully."
+          : "تم أرشفة المنشور بنجاح.",
+      });
+    },
+  });
+
+  // Restore publication mutation
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => restorePublication(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['publications'] });
+      toast({
+        title: language === "en" ? "Publication Restored" : "تم استعادة المنشور",
+        description: language === "en"
+          ? "The publication has been restored successfully."
+          : "تم استعادة المنشور بنجاح.",
+      });
+    },
   });
 
   // Delete publication mutation
@@ -62,8 +91,8 @@ const DashboardPublications = () => {
       toast({
         title: language === "en" ? "Publication Deleted" : "تم حذف المنشور",
         description: language === "en"
-          ? "The publication has been deleted successfully."
-          : "تم حذف المنشور بنجاح.",
+          ? "The publication has been deleted permanently."
+          : "تم حذف المنشور بشكل نهائي.",
       });
       setPublicationToDelete(null);
     },
@@ -72,21 +101,23 @@ const DashboardPublications = () => {
   // Get unique categories
   const categories = Array.from(new Set(publications.map(pub => pub.category)));
 
-  // Filter publications by search term and category
-  const filteredPublications = publications.filter(pub => {
-    const title = language === "en" ? pub.title : pub.titleAr;
-    const abstract = language === "en" ? pub.abstract : pub.abstractAr;
-    const authors = language === "en" ? pub.authors : pub.authorsAr;
+  // Filter publications by search term, category, and archived status
+  const filteredPublications = publications.filter(publication => {
+    const title = language === "en" ? publication.title : publication.titleAr;
+    const abstract = language === "en" ? publication.abstract : publication.abstractAr;
     
     const matchesSearch = 
       !searchTerm || 
       title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       abstract.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      authors.toLowerCase().includes(searchTerm.toLowerCase());
+      publication.category.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = !categoryFilter || pub.category === categoryFilter;
+    const matchesCategory = !categoryFilter || publication.category === categoryFilter;
     
-    return matchesSearch && matchesCategory;
+    // Check if active or archived based on current tab
+    const matchesTab = activeTab === "active" ? !publication.archived : publication.archived;
+    
+    return matchesSearch && matchesCategory && matchesTab;
   });
 
   return (
@@ -111,25 +142,21 @@ const DashboardPublications = () => {
               </div>
               
               {categories.length > 0 && (
-                <Tabs value={categoryFilter || "all"} className="w-full md:w-auto">
-                  <TabsList>
-                    <TabsTrigger 
-                      value="all" 
-                      onClick={() => setCategoryFilter(null)}
-                    >
-                      {language === "en" ? "All" : "الكل"}
-                    </TabsTrigger>
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <select
+                    value={categoryFilter || ""}
+                    onChange={(e) => setCategoryFilter(e.target.value || null)}
+                    className="p-2 border rounded-md"
+                  >
+                    <option value="">
+                      {language === "en" ? "All categories" : "جميع الفئات"}
+                    </option>
                     {categories.map(category => (
-                      <TabsTrigger
-                        key={category}
-                        value={category}
-                        onClick={() => setCategoryFilter(category)}
-                      >
-                        {category}
-                      </TabsTrigger>
+                      <option key={category} value={category}>{category}</option>
                     ))}
-                  </TabsList>
-                </Tabs>
+                  </select>
+                </div>
               )}
             </div>
             
@@ -139,127 +166,207 @@ const DashboardPublications = () => {
             </Button>
           </div>
           
-          {isLoading ? (
-            <div className="flex justify-center p-8">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-            </div>
-          ) : filteredPublications.length > 0 ? (
-            <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
-                      {language === "en" ? "Title" : "العنوان"}
-                    </TableHead>
-                    <TableHead>
-                      {language === "en" ? "Authors" : "المؤلفون"}
-                    </TableHead>
-                    <TableHead>
-                      {language === "en" ? "Published In" : "نُشر في"}
-                    </TableHead>
-                    <TableHead>
-                      {language === "en" ? "Date" : "التاريخ"}
-                    </TableHead>
-                    <TableHead>
-                      {language === "en" ? "Links" : "الروابط"}
-                    </TableHead>
-                    <TableHead className="text-right">
-                      {language === "en" ? "Actions" : "الإجراءات"}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPublications.map((publication) => (
-                    <TableRow key={publication.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {publication.featured && (
-                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                          )}
-                          {language === "en" ? publication.title : publication.titleAr}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="line-clamp-1">
-                          {language === "en" ? publication.authors : publication.authorsAr}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {publication.category}
-                        </Badge>
-                        <div className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                          {language === "en" ? publication.publishedIn : publication.publishedInAr}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(publication.date).toLocaleDateString(
-                          language === "en" ? undefined : "ar-SA"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {publication.link && (
-                            <Button variant="ghost" size="icon" asChild>
-                              <a href={publication.link} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          )}
-                          {publication.relatedProjectId && (
-                            <Button variant="ghost" size="icon" asChild>
-                              <a href={`/dashboard/projects/editor/${publication.relatedProjectId}`}>
-                                <LinkIcon className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>
-                              {language === "en" ? "Actions" : "الإجراءات"}
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => navigate(`/dashboard/publications/editor/${publication.id}`)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              {language === "en" ? "Edit" : "تعديل"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => setPublicationToDelete(publication.id)}
-                              className="text-red-600"
-                            >
-                              <Trash className="h-4 w-4 mr-2" />
-                              {language === "en" ? "Delete" : "حذف"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                {searchTerm || categoryFilter
-                  ? language === "en" 
-                      ? "No publications match your search criteria" 
-                      : "لا توجد منشورات تطابق معايير البحث"
-                  : language === "en" 
-                      ? "No publications yet. Click 'Add Publication' to create one."
-                      : "لا توجد منشورات حتى الآن. انقر على 'إضافة منشور' لإنشاء واحد."
-                }
-              </p>
-            </div>
-          )}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="active">
+                {language === "en" ? "Active Publications" : "المنشورات النشطة"}
+              </TabsTrigger>
+              <TabsTrigger value="archived">
+                {language === "en" ? "Archive" : "الأرشيف"}
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="active">
+              {isLoading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+                </div>
+              ) : filteredPublications.length > 0 ? (
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>
+                          {language === "en" ? "Title" : "العنوان"}
+                        </TableHead>
+                        <TableHead>
+                          {language === "en" ? "Category" : "الفئة"}
+                        </TableHead>
+                        <TableHead>
+                          {language === "en" ? "Date" : "التاريخ"}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {language === "en" ? "Actions" : "الإجراءات"}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPublications.map((publication) => (
+                        <TableRow key={publication.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {publication.featured && (
+                                <span className="text-yellow-500 text-xs">★</span>
+                              )}
+                              {language === "en" ? publication.title : publication.titleAr}
+                              {publication.link && (
+                                <a 
+                                  href={publication.link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 inline-flex items-center"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {publication.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(publication.date).toLocaleDateString(
+                              language === "en" ? undefined : "ar-SA"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>
+                                  {language === "en" ? "Actions" : "الإجراءات"}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => navigate(`/dashboard/publications/editor/${publication.id}`)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  {language === "en" ? "Edit" : "تعديل"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => archiveMutation.mutate(publication.id)}>
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  {language === "en" ? "Archive" : "أرشفة"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => setPublicationToDelete(publication.id)}
+                                  className="text-red-600"
+                                >
+                                  <Trash className="h-4 w-4 mr-2" />
+                                  {language === "en" ? "Delete" : "حذف"}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    {searchTerm || categoryFilter
+                      ? language === "en" 
+                          ? "No publications match your search criteria" 
+                          : "لا توجد منشورات تطابق معايير البحث"
+                      : language === "en" 
+                          ? "No publications yet. Click 'Add Publication' to create one."
+                          : "لا توجد منشورات حتى الآن. انقر على 'إضافة منشور' لإنشاء واحد."
+                    }
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="archived">
+              {isLoading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+                </div>
+              ) : filteredPublications.length > 0 ? (
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>
+                          {language === "en" ? "Title" : "العنوان"}
+                        </TableHead>
+                        <TableHead>
+                          {language === "en" ? "Category" : "الفئة"}
+                        </TableHead>
+                        <TableHead>
+                          {language === "en" ? "Date" : "التاريخ"}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {language === "en" ? "Actions" : "الإجراءات"}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPublications.map((publication) => (
+                        <TableRow key={publication.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {language === "en" ? publication.title : publication.titleAr}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {publication.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(publication.date).toLocaleDateString(
+                              language === "en" ? undefined : "ar-SA"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>
+                                  {language === "en" ? "Actions" : "الإجراءات"}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => restoreMutation.mutate(publication.id)}>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  {language === "en" ? "Restore" : "استعادة"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => setPublicationToDelete(publication.id)}
+                                  className="text-red-600"
+                                >
+                                  <Trash className="h-4 w-4 mr-2" />
+                                  {language === "en" ? "Delete Permanently" : "حذف نهائياً"}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    {language === "en" 
+                      ? "No archived publications found." 
+                      : "لا توجد منشورات مؤرشفة."
+                    }
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 

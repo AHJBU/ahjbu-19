@@ -23,6 +23,18 @@ export interface Course {
   updated_at?: string;
 }
 
+export interface CourseOrder {
+  id: string;
+  course_id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  payment_method?: string;
+  payment_id?: string;
+  created_at: string;
+}
+
 // الحصول على جميع الدورات
 export const getCourses = async (): Promise<Course[]> => {
   try {
@@ -185,6 +197,75 @@ export const archiveCourse = async (id: string): Promise<Course> => {
     } as Course;
   } catch (error) {
     console.error(`Error archiving course ${id}:`, error);
+    throw error;
+  }
+};
+
+// إنشاء طلب للدورة
+export const createOrder = async (order: Omit<CourseOrder, 'id' | 'created_at'>): Promise<CourseOrder> => {
+  try {
+    const { data, error } = await supabase
+      .from('course_orders')
+      .insert([order])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return data as CourseOrder;
+  } catch (error) {
+    console.error('Error creating order:', error);
+    throw error;
+  }
+};
+
+// الحصول على طلبات الدورة مع التفاصيل
+export const getCourseOrdersWithDetails = async (): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('course_orders')
+      .select(`
+        *,
+        courses:course_id (title, titleAr, image),
+        profiles:user_id (name, email, avatar)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching course orders with details:', error);
+    return [];
+  }
+};
+
+// تحديث حالة الطلب
+export const updateOrderStatus = async (id: string, status: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('course_orders')
+      .update({ status })
+      .eq('id', id);
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error(`Error updating order status ${id}:`, error);
+    throw error;
+  }
+};
+
+// حذف طلب
+export const deleteOrder = async (id: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('course_orders')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error(`Error deleting order ${id}:`, error);
     throw error;
   }
 };

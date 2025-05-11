@@ -7,16 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import { MediaSelector } from "@/components/media/MediaSelector";
-import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCourse, createCourse, updateCourse } from "@/services/course-service";
-import { Course } from "@/types/course";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Course } from "@/services/course-service";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const CourseEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,17 +38,15 @@ const CourseEditor = () => {
     content: "",
     contentAr: "",
     image: "",
-    category: "Web Development",
+    category: "",
     level: "Beginner",
     price: 0,
     currency: "USD",
     duration: 0,
-    lessons: 0,
-    isFree: true,
-    showOrders: false,
-    featured: false,
     students: 0,
-    tags: []
+    isFree: false,
+    isPublished: false,
+    featured: false
   });
 
   // Fetch course data if in edit mode
@@ -66,7 +69,7 @@ const CourseEditor = () => {
       if (isEditMode) {
         return updateCourse(id!, data);
       } else {
-        return createCourse(data as Omit<Course, 'id'>);
+        return createCourse(data as Omit<Course, 'id' | 'created_at' | 'updated_at'>);
       }
     },
     onSuccess: () => {
@@ -84,38 +87,22 @@ const CourseEditor = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Prepare price data
-    let courseData = {...course};
-    if (course.isFree) {
-      courseData.price = 0;
+    if (!course.title || !course.description) {
+      toast({
+        title: language === "en" ? "Missing Information" : "معلومات ناقصة",
+        description: language === "en" 
+          ? "Please fill in all required fields." 
+          : "الرجاء ملء جميع الحقول المطلوبة.",
+        variant: "destructive",
+      });
+      return;
     }
     
-    mutation.mutate(courseData);
+    mutation.mutate(course);
   };
 
   const handleImageSelected = (url: string) => {
     setCourse(prev => ({ ...prev, image: url }));
-  };
-
-  const handleTagInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && e.currentTarget.value.trim() !== '') {
-      e.preventDefault();
-      const newTag = e.currentTarget.value.trim();
-      if (!course.tags?.includes(newTag)) {
-        setCourse(prev => ({
-          ...prev,
-          tags: [...(prev.tags || []), newTag]
-        }));
-      }
-      e.currentTarget.value = '';
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setCourse(prev => ({
-      ...prev,
-      tags: prev.tags?.filter(t => t !== tag) || []
-    }));
   };
 
   return (
@@ -126,7 +113,7 @@ const CourseEditor = () => {
       }
       breadcrumbs={[
         { label: language === "en" ? "Courses" : "الدورات", href: "/dashboard/courses" },
-        { label: language === "en" ? (isEditMode ? "Edit Course" : "New Course") : (isEditMode ? "تعديل دورة" : "دورة جديدة"), href: "#" }
+        { label: language === "en" ? (isEditMode ? "Edit" : "New") : (isEditMode ? "تعديل" : "إضافة"), href: "#" }
       ]}
     >
       {isLoadingCourse ? (
@@ -135,26 +122,273 @@ const CourseEditor = () => {
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
-          <Tabs defaultValue="english" className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
-              <TabsList>
-                <TabsTrigger value="english">
-                  {language === "en" ? "English" : "الإنجليزية"}
-                </TabsTrigger>
-                <TabsTrigger value="arabic">
-                  {language === "en" ? "Arabic" : "العربية"}
-                </TabsTrigger>
-              </TabsList>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <Card>
+                <CardContent className="pt-6">
+                  <Tabs defaultValue="english" className="space-y-6">
+                    <TabsList>
+                      <TabsTrigger value="english">
+                        {language === "en" ? "English" : "الإنجليزية"}
+                      </TabsTrigger>
+                      <TabsTrigger value="arabic">
+                        {language === "en" ? "Arabic" : "العربية"}
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    {/* English Content */}
+                    <TabsContent value="english" className="space-y-4">
+                      <div>
+                        <Label htmlFor="title">Title</Label>
+                        <Input
+                          id="title"
+                          value={course.title}
+                          onChange={(e) => setCourse({ ...course, title: e.target.value })}
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                          id="description"
+                          value={course.description}
+                          onChange={(e) => setCourse({ ...course, description: e.target.value })}
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="content">Course Content</Label>
+                        <Textarea
+                          id="content"
+                          value={course.content}
+                          onChange={(e) => setCourse({ ...course, content: e.target.value })}
+                          className="mt-1 min-h-[200px]"
+                        />
+                      </div>
+                    </TabsContent>
+                    
+                    {/* Arabic Content */}
+                    <TabsContent value="arabic" className="space-y-4">
+                      <div>
+                        <Label htmlFor="titleAr">العنوان</Label>
+                        <Input
+                          id="titleAr"
+                          value={course.titleAr}
+                          onChange={(e) => setCourse({ ...course, titleAr: e.target.value })}
+                          className="mt-1"
+                          dir="rtl"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="descriptionAr">الوصف</Label>
+                        <Textarea
+                          id="descriptionAr"
+                          value={course.descriptionAr}
+                          onChange={(e) => setCourse({ ...course, descriptionAr: e.target.value })}
+                          className="mt-1"
+                          dir="rtl"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="contentAr">محتوى الدورة</Label>
+                        <Textarea
+                          id="contentAr"
+                          value={course.contentAr}
+                          onChange={(e) => setCourse({ ...course, contentAr: e.target.value })}
+                          className="mt-1 min-h-[200px]"
+                          dir="rtl"
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Sidebar Settings */}
+            <div>
+              <Card>
+                <CardContent className="pt-6 space-y-6">
+                  {/* Course Image */}
+                  <div>
+                    <Label>{language === "en" ? "Course Image" : "صورة الدورة"}</Label>
+                    <div className="mt-2">
+                      <MediaSelector 
+                        value={course.image}
+                        onValueChange={handleImageSelected}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Course Details */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="category">
+                        {language === "en" ? "Category" : "الفئة"}
+                      </Label>
+                      <Input
+                        id="category"
+                        value={course.category}
+                        onChange={(e) => setCourse({ ...course, category: e.target.value })}
+                        className="mt-1"
+                        placeholder={language === "en" ? "e.g. Web Development" : "مثال: تطوير الويب"}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="level">
+                        {language === "en" ? "Level" : "المستوى"}
+                      </Label>
+                      <Select
+                        value={course.level}
+                        onValueChange={(value: "Beginner" | "Intermediate" | "Advanced") => setCourse({ ...course, level: value })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Beginner">
+                            {language === "en" ? "Beginner" : "مبتدئ"}
+                          </SelectItem>
+                          <SelectItem value="Intermediate">
+                            {language === "en" ? "Intermediate" : "متوسط"}
+                          </SelectItem>
+                          <SelectItem value="Advanced">
+                            {language === "en" ? "Advanced" : "متقدم"}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="price">
+                          {language === "en" ? "Price" : "السعر"}
+                        </Label>
+                        <Input
+                          id="price"
+                          type="number"
+                          value={course.price}
+                          onChange={(e) => setCourse({ ...course, price: parseFloat(e.target.value) })}
+                          className="mt-1"
+                          min="0"
+                          disabled={course.isFree}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="currency">
+                          {language === "en" ? "Currency" : "العملة"}
+                        </Label>
+                        <Select
+                          value={course.currency}
+                          onValueChange={(value) => setCourse({ ...course, currency: value })}
+                          disabled={course.isFree}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="SAR">SAR</SelectItem>
+                            <SelectItem value="AED">AED</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="duration">
+                          {language === "en" ? "Duration (hours)" : "المدة (بالساعات)"}
+                        </Label>
+                        <Input
+                          id="duration"
+                          type="number"
+                          value={course.duration}
+                          onChange={(e) => setCourse({ ...course, duration: parseInt(e.target.value) })}
+                          className="mt-1"
+                          min="0"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="students">
+                          {language === "en" ? "Students" : "الطلاب"}
+                        </Label>
+                        <Input
+                          id="students"
+                          type="number"
+                          value={course.students}
+                          onChange={(e) => setCourse({ ...course, students: parseInt(e.target.value) })}
+                          className="mt-1"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="isFree">
+                          {language === "en" ? "Free Course" : "دورة مجانية"}
+                        </Label>
+                        <Switch
+                          id="isFree"
+                          checked={course.isFree}
+                          onCheckedChange={(checked) => setCourse({ ...course, isFree: checked, price: checked ? 0 : course.price })}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="isPublished">
+                          {language === "en" ? "Publish Course" : "نشر الدورة"}
+                        </Label>
+                        <Switch
+                          id="isPublished"
+                          checked={course.isPublished}
+                          onCheckedChange={(checked) => setCourse({ ...course, isPublished: checked })}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="featured">
+                          {language === "en" ? "Featured Course" : "دورة مميزة"}
+                        </Label>
+                        <Switch
+                          id="featured"
+                          checked={course.featured}
+                          onCheckedChange={(checked) => setCourse({ ...course, featured: checked })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               
-              <div className="flex gap-4">
+              <div className="flex gap-4 mt-6">
                 <Button
                   type="button"
                   variant="outline"
+                  className="w-full"
                   onClick={() => navigate('/dashboard/courses')}
                 >
                   {language === "en" ? "Cancel" : "إلغاء"}
                 </Button>
-                <Button type="submit" disabled={mutation.isPending}>
+                <Button type="submit" className="w-full" disabled={mutation.isPending}>
                   {mutation.isPending ? (
                     language === "en" ? "Saving..." : "جارِ الحفظ..."
                   ) : (
@@ -163,282 +397,7 @@ const CourseEditor = () => {
                 </Button>
               </div>
             </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-8">
-                {/* English Content */}
-                <TabsContent value="english" className="space-y-4">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={course.title}
-                        onChange={(e) => setCourse({ ...course, title: e.target.value })}
-                        className="mt-1"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Input
-                        id="description"
-                        value={course.description}
-                        onChange={(e) => setCourse({ ...course, description: e.target.value })}
-                        className="mt-1"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="content">Content</Label>
-                      <div className="mt-1">
-                        <RichTextEditor
-                          value={course.content || ""}
-                          onChange={(value) => setCourse({ ...course, content: value })}
-                          height={400}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                {/* Arabic Content */}
-                <TabsContent value="arabic" className="space-y-4">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="titleAr">العنوان</Label>
-                      <Input
-                        id="titleAr"
-                        value={course.titleAr}
-                        onChange={(e) => setCourse({ ...course, titleAr: e.target.value })}
-                        className="mt-1"
-                        dir="rtl"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="descriptionAr">الوصف</Label>
-                      <Input
-                        id="descriptionAr"
-                        value={course.descriptionAr}
-                        onChange={(e) => setCourse({ ...course, descriptionAr: e.target.value })}
-                        className="mt-1"
-                        dir="rtl"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="contentAr">المحتوى</Label>
-                      <div className="mt-1">
-                        <RichTextEditor
-                          value={course.contentAr || ""}
-                          onChange={(value) => setCourse({ ...course, contentAr: value })}
-                          height={400}
-                          dir="rtl"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-              </div>
-              
-              {/* Sidebar Settings */}
-              <div>
-                <Card>
-                  <CardContent className="pt-6 space-y-6">
-                    {/* Course Image */}
-                    <div>
-                      <Label>{language === "en" ? "Course Image" : "صورة الدورة"}</Label>
-                      <div className="mt-2">
-                        <MediaSelector 
-                          value={course.image}
-                          onValueChange={handleImageSelected}
-                        />
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    {/* Course Details */}
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="category">
-                          {language === "en" ? "Category" : "التصنيف"}
-                        </Label>
-                        <Input
-                          id="category"
-                          value={course.category}
-                          onChange={(e) => setCourse({ ...course, category: e.target.value })}
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="level">
-                          {language === "en" ? "Level" : "المستوى"}
-                        </Label>
-                        <Select
-                          value={course.level}
-                          onValueChange={(value: "Beginner" | "Intermediate" | "Advanced") => 
-                            setCourse({ ...course, level: value })
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value="Beginner">
-                                {language === "en" ? "Beginner" : "مبتدئ"}
-                              </SelectItem>
-                              <SelectItem value="Intermediate">
-                                {language === "en" ? "Intermediate" : "متوسط"}
-                              </SelectItem>
-                              <SelectItem value="Advanced">
-                                {language === "en" ? "Advanced" : "متقدم"}
-                              </SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="duration">
-                            {language === "en" ? "Duration (hours)" : "المدة (ساعات)"}
-                          </Label>
-                          <Input
-                            id="duration"
-                            type="number"
-                            value={course.duration}
-                            onChange={(e) => setCourse({ ...course, duration: Number(e.target.value) })}
-                            className="mt-1"
-                            min="0"
-                          />
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="lessons">
-                            {language === "en" ? "Lessons" : "الدروس"}
-                          </Label>
-                          <Input
-                            id="lessons"
-                            type="number"
-                            value={course.lessons}
-                            onChange={(e) => setCourse({ ...course, lessons: Number(e.target.value) })}
-                            className="mt-1"
-                            min="0"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Price Settings */}
-                      <div className="space-y-4 pt-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="isFree">
-                            {language === "en" ? "Free Course" : "دورة مجانية"}
-                          </Label>
-                          <Switch
-                            id="isFree"
-                            checked={course.isFree}
-                            onCheckedChange={(checked) => setCourse({ ...course, isFree: checked })}
-                          />
-                        </div>
-                        
-                        {!course.isFree && (
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="price">
-                                {language === "en" ? "Price" : "السعر"}
-                              </Label>
-                              <Input
-                                id="price"
-                                type="number"
-                                value={course.price}
-                                onChange={(e) => setCourse({ ...course, price: Number(e.target.value) })}
-                                className="mt-1"
-                                min="0"
-                              />
-                            </div>
-                            
-                            <div>
-                              <Label htmlFor="currency">
-                                {language === "en" ? "Currency" : "العملة"}
-                              </Label>
-                              <Input
-                                id="currency"
-                                value={course.currency}
-                                onChange={(e) => setCourse({ ...course, currency: e.target.value })}
-                                className="mt-1"
-                                placeholder="USD"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Display Settings */}
-                      <div className="pt-2 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="featured">
-                            {language === "en" ? "Featured Course" : "دورة مميزة"}
-                          </Label>
-                          <Switch
-                            id="featured"
-                            checked={course.featured}
-                            onCheckedChange={(checked) => setCourse({ ...course, featured: checked })}
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="showOrders">
-                            {language === "en" ? "Show Orders Count" : "إظهار عدد الطلبات"}
-                          </Label>
-                          <Switch
-                            id="showOrders"
-                            checked={course.showOrders}
-                            onCheckedChange={(checked) => setCourse({ ...course, showOrders: checked })}
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Tags */}
-                      <div className="pt-2">
-                        <Label htmlFor="tags">
-                          {language === "en" ? "Tags" : "الوسوم"}
-                        </Label>
-                        <div className="mt-1">
-                          <Input
-                            id="tags"
-                            onKeyDown={handleTagInput}
-                            placeholder={language === "en" ? "Press Enter to add" : "اضغط Enter للإضافة"}
-                          />
-                          
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {course.tags?.map((tag, index) => (
-                              <div 
-                                key={index} 
-                                className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm flex items-center gap-2"
-                              >
-                                {tag}
-                                <button 
-                                  type="button"
-                                  onClick={() => removeTag(tag)}
-                                  className="text-primary/70 hover:text-primary"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </Tabs>
+          </div>
         </form>
       )}
     </DashboardLayout>

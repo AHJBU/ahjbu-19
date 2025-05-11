@@ -9,6 +9,7 @@ import {
 import { Briefcase, Award, Book, FileText, UserCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getProfile } from "@/services/profile-service";
+import { Skill, Profile } from "@/types/profile";
 
 export function About() {
   const { language, t } = useLanguage();
@@ -19,64 +20,113 @@ export function About() {
     queryFn: () => getProfile(),
     // If we can't fetch the profile, we'll use the fallback data
     placeholderData: {
+      id: "1",
       name: language === "en" ? "John Doe" : "جون دو",
       nameAr: "جون دو",
-      position: language === "en" ? "Full-Stack Developer" : "مطور الويب الشامل",
-      positionAr: "مطور الويب الشامل",
+      title: language === "en" ? "Full-Stack Developer" : "مطور الويب الشامل",
+      titleAr: "مطور الويب الشامل",
       bio: language === "en" ? "I'm a full-stack developer with over 5 years of experience in building modern web applications. I specialize in React, Node.js, and serverless architectures." : "أنا مطور full-stack مع أكثر من 5 سنوات من الخبرة في بناء تطبيقات الويب الحديثة. أتخصص في React و Node.js والبنى الـ serverless.",
       bioAr: "أنا مطور full-stack مع أكثر من 5 سنوات من الخبرة في بناء تطبيقات الويب الحديثة. أتخصص في React و Node.js والبنى الـ serverless.",
-      additionalBio: language === "en" ? "I'm passionate about creating intuitive user interfaces and scalable backend systems that solve real-world problems." : "أنا شغوف بإنشاء واجهات مستخدم بديهية وأنظمة خلفية قابلة للتوسع تحل المشكلات الحقيقية.",
-      additionalBioAr: "أنا شغوف بإنشاء واجهات مستخدم بديهية وأنظمة خلفية قابلة للتوسع تحل المشكلات الحقيقية.",
-      image: "https://images.unsplash.com/photo-1603575449096-da705f622102",
+      email: "example@example.com",
+      avatar: "https://images.unsplash.com/photo-1603575449096-da705f622102",
+      coverImage: "https://images.unsplash.com/photo-1522071820081-009f0129c71c",
+      location: "San Francisco, CA",
+      locationAr: "سان فرانسيسكو، كاليفورنيا",
+      social: {
+        github: "https://github.com",
+        linkedin: "https://linkedin.com",
+      },
       skills: [
-        "React", "TypeScript", "Node.js", "Next.js",
-        "GraphQL", "Tailwind CSS", "UI/UX Design", "MongoDB"
+        {
+          id: "skill-1",
+          name: "React", 
+          nameAr: "رياكت",
+          level: 90,
+          category: "Frontend"
+        },
+        {
+          id: "skill-2",
+          name: "TypeScript", 
+          nameAr: "تايب سكريبت",
+          level: 85,
+          category: "Development"
+        },
+        {
+          id: "skill-3",
+          name: "Node.js", 
+          nameAr: "نود جي اس",
+          level: 80,
+          category: "Backend"
+        },
+        {
+          id: "skill-4",
+          name: "Next.js", 
+          nameAr: "نكست جي اس",
+          level: 75,
+          category: "Frontend"
+        }
       ],
       experiences: [
         {
           id: "exp-1",
-          period: "2021-present",
           title: "Senior Full-Stack Developer",
           titleAr: "مطور الويب الشامل",
           company: "Tech Innovations Ltd",
           companyAr: "شركة تك إنوفيشنز",
+          location: "San Francisco, CA",
+          locationAr: "سان فرانسيسكو، كاليفورنيا",
+          startDate: "2021-01-01",
+          endDate: null,
           description: "Lead developer for enterprise web applications using React, Node.js, and GraphQL. Managed a team of 5 developers.",
-          descriptionAr: "مطور رئيسي لتطبيقات الويب للشركات باستخدام React و Node.js و GraphQL. إدارة فريق من 5 مطورين."
+          descriptionAr: "مطور رئيسي لتطبيقات الويب للشركات باستخدام React و Node.js و GraphQL. إدارة فريق من 5 مطورين.",
+          current: true
         },
         {
           id: "exp-2",
-          period: "2018-2021",
           title: "Frontend Developer",
           titleAr: "مطور واجهة المستخدم",
           company: "Digital Solutions",
           companyAr: "الحلول الرقمية",
+          location: "Boston, MA",
+          locationAr: "بوسطن، ماساتشوستس",
+          startDate: "2018-03-01",
+          endDate: "2020-12-31",
           description: "Developed responsive web applications with React and Redux. Implemented UI/UX designs and optimized performance.",
-          descriptionAr: "تطوير تطبيقات الويب سريعة الاستجابة باستخدام React و Redux. تنفيذ تصميمات واجهة المستخدم وتحسين الأداء."
+          descriptionAr: "تطوير تطبيقات الويب سريعة الاستجابة باستخدام React و Redux. تنفيذ تصميمات واجهة المستخدم وتحسين الأداء.",
+          current: false
         },
         {
           id: "exp-3",
-          period: "2016-2018",
           title: "Web Developer",
           titleAr: "مطور ويب",
           company: "Creative Studios",
           companyAr: "استديوهات إبداعية",
+          location: "New York, NY",
+          locationAr: "نيويورك",
+          startDate: "2016-06-01",
+          endDate: "2018-02-28",
           description: "Built websites using HTML, CSS, and JavaScript. Collaborated with designers to create responsive layouts.",
-          descriptionAr: "بناء مواقع الويب باستخدام HTML و CSS و JavaScript. التعاون مع المصممين لإنشاء تخطيطات متجاوبة."
+          descriptionAr: "بناء مواقع الويب باستخدام HTML و CSS و JavaScript. التعاون مع المصممين لإنشاء تخطيطات متجاوبة.",
+          current: false
         }
       ],
       education: [
         {
           id: "edu-1",
-          period: "2012-2016",
           degree: "Bachelor of Computer Science",
           degreeAr: "بكالوريوس علوم الحاسب",
           institution: "University of Technology",
           institutionAr: "جامعة التكنولوجيا",
+          location: "San Francisco, CA",
+          locationAr: "سان فرانسيسكو، كاليفورنيا",
+          startDate: "2012-09-01",
+          endDate: "2016-06-30",
           description: "Graduated with honors. Specialized in software development and web technologies.",
-          descriptionAr: "تخرج بمرتبة الشرف. متخصص في تطوير البرمجيات وتقنيات الويب."
+          descriptionAr: "تخرج بمرتبة الشرف. متخصص في تطوير البرمجيات وتقنيات الويب.",
+          current: false
         }
       ],
-      certificates: []
+      gallery: []
     }
   });
 
@@ -93,7 +143,7 @@ export function About() {
             <div className="relative">
               <div className="aspect-square rounded-2xl overflow-hidden border-4 border-background shadow-lg">
                 <img
-                  src={profile?.image || "https://images.unsplash.com/photo-1603575449096-da705f622102"}
+                  src={profile?.avatar || "https://images.unsplash.com/photo-1603575449096-da705f622102"}
                   alt={language === "en" ? profile?.name : profile?.nameAr}
                   className="w-full h-full object-cover"
                 />
@@ -111,15 +161,11 @@ export function About() {
             </h3>
             
             <h4 className="text-xl text-purple-600">
-              {language === "en" ? profile?.position : profile?.positionAr}
+              {language === "en" ? profile?.title : profile?.titleAr}
             </h4>
             
             <p className="text-muted-foreground">
               {language === "en" ? profile?.bio : profile?.bioAr}
-            </p>
-            
-            <p className="text-muted-foreground">
-              {language === "en" ? profile?.additionalBio : profile?.additionalBioAr}
             </p>
 
             <div>
@@ -127,10 +173,10 @@ export function About() {
               <div className="flex flex-wrap gap-2">
                 {profile?.skills.map((skill) => (
                   <span 
-                    key={skill}
+                    key={skill.id}
                     className="px-3 py-1 rounded-full bg-muted text-sm"
                   >
-                    {skill}
+                    {language === "en" ? skill.name : skill.nameAr}
                   </span>
                 ))}
               </div>
@@ -154,7 +200,10 @@ export function About() {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
                     <h4 className="font-bold text-lg">{language === "en" ? exp.title : exp.titleAr}</h4>
                     <span className="text-sm text-muted-foreground">
-                      {exp.period.replace('-', ' - ')}
+                      {new Date(exp.startDate).getFullYear()} - {exp.current ? 
+                        (language === "en" ? "Present" : "الحالي") : 
+                        new Date(exp.endDate as string).getFullYear()
+                      }
                     </span>
                   </div>
                   <div className="text-muted-foreground mb-2">
@@ -183,7 +232,10 @@ export function About() {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
                     <h4 className="font-bold text-lg">{language === "en" ? edu.degree : edu.degreeAr}</h4>
                     <span className="text-sm text-muted-foreground">
-                      {edu.period.replace('-', ' - ')}
+                      {new Date(edu.startDate).getFullYear()} - {edu.current ? 
+                        (language === "en" ? "Present" : "الحالي") : 
+                        new Date(edu.endDate as string).getFullYear()
+                      }
                     </span>
                   </div>
                   <div className="text-muted-foreground mb-2">

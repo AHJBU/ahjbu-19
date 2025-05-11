@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCourses, deleteCourse } from "@/services/course-service";
-import { Course } from "@/types/course";
+import { getCourses, deleteCourse, archiveCourse } from "@/services/course-service";
 import { toast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
@@ -36,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, MoreVertical, PlusCircle, Edit, Trash, Check, X } from "lucide-react";
+import { Search, MoreVertical, PlusCircle, Edit, Trash, Archive, Eye, Users, BarChart, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const DashboardCourses = () => {
@@ -44,12 +43,28 @@ const DashboardCourses = () => {
   const { language } = useLanguage();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [levelFilter, setLevelFilter] = useState<string | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
 
   // Fetch courses data
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ['courses'],
     queryFn: getCourses
+  });
+
+  // Archive course mutation
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => archiveCourse(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      toast({
+        title: language === "en" ? "Course Archived" : "تم أرشفة الدورة",
+        description: language === "en"
+          ? "The course has been archived and is no longer visible to users."
+          : "تم أرشفة الدورة ولم تعد مرئية للمستخدمين.",
+      });
+    },
   });
 
   // Delete course mutation
@@ -67,15 +82,30 @@ const DashboardCourses = () => {
     },
   });
 
-  // Filter courses by search term
+  // Get unique categories and levels
+  const categories = Array.from(new Set(courses.map(course => course.category)));
+  const levels = Array.from(new Set(courses.map(course => course.level)));
+
+  // Filter courses by search term, category, and level
   const filteredCourses = courses.filter(course => {
     const title = language === "en" ? course.title : course.titleAr;
-    return title.toLowerCase().includes(searchTerm.toLowerCase());
+    const description = language === "en" ? course.description : course.descriptionAr;
+    
+    const matchesSearch = 
+      !searchTerm || 
+      title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.category.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = !categoryFilter || course.category === categoryFilter;
+    const matchesLevel = !levelFilter || course.level === levelFilter;
+    
+    return matchesSearch && matchesCategory && matchesLevel;
   });
 
   return (
     <DashboardLayout 
-      title={language === "en" ? "Courses" : "الدورات"}
+      title={language === "en" ? "Courses Management" : "إدارة الدورات"}
       breadcrumbs={[
         { label: language === "en" ? "Courses" : "الدورات", href: "/dashboard/courses" }
       ]}
@@ -83,20 +113,68 @@ const DashboardCourses = () => {
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder={language === "en" ? "Search courses..." : "بحث في الدورات..."}
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder={language === "en" ? "Search courses..." : "بحث في الدورات..."}
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              {categories.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={categoryFilter || ""}
+                    onChange={(e) => setCategoryFilter(e.target.value || null)}
+                    className="p-2 border rounded-md"
+                  >
+                    <option value="">
+                      {language === "en" ? "All categories" : "جميع الفئات"}
+                    </option>
+                    {categories.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              {levels.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={levelFilter || ""}
+                    onChange={(e) => setLevelFilter(e.target.value || null)}
+                    className="p-2 border rounded-md"
+                  >
+                    <option value="">
+                      {language === "en" ? "All levels" : "جميع المستويات"}
+                    </option>
+                    {levels.map(level => (
+                      <option key={level} value={level}>
+                        {language === "en" ? level : 
+                          level === "Beginner" ? "مبتدئ" : 
+                          level === "Intermediate" ? "متوسط" : "متقدم"
+                        }
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             
-            <Button onClick={() => navigate("/dashboard/courses/editor")}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              {language === "en" ? "Add Course" : "إضافة دورة"}
-            </Button>
+            <div className="flex gap-4">
+              <Button onClick={() => navigate("/dashboard/course-orders")}>
+                <Users className="h-4 w-4 mr-2" />
+                {language === "en" ? "Manage Orders" : "إدارة الطلبات"}
+              </Button>
+              
+              <Button onClick={() => navigate("/dashboard/courses/editor")}>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                {language === "en" ? "Add Course" : "إضافة دورة"}
+              </Button>
+            </div>
           </div>
           
           {isLoading ? (
@@ -109,10 +187,10 @@ const DashboardCourses = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>
-                      {language === "en" ? "Title" : "العنوان"}
+                      {language === "en" ? "Course" : "الدورة"}
                     </TableHead>
                     <TableHead>
-                      {language === "en" ? "Category" : "التصنيف"}
+                      {language === "en" ? "Category" : "الفئة"}
                     </TableHead>
                     <TableHead>
                       {language === "en" ? "Price" : "السعر"}
@@ -128,37 +206,74 @@ const DashboardCourses = () => {
                 <TableBody>
                   {filteredCourses.map((course) => (
                     <TableRow key={course.id}>
-                      <TableCell className="font-medium">
-                        {language === "en" ? course.title : course.titleAr}
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {course.image && (
+                            <div className="h-10 w-10 rounded overflow-hidden">
+                              <img 
+                                src={course.image} 
+                                alt={language === "en" ? course.title : course.titleAr} 
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-medium flex items-center gap-2">
+                              {language === "en" ? course.title : course.titleAr}
+                              {course.featured && (
+                                <span className="text-yellow-500 text-xs">★</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                              <span className="flex items-center">
+                                <BarChart className="h-3 w-3 mr-1" />
+                                {language === "en" ? course.level : 
+                                  course.level === "Beginner" ? "مبتدئ" : 
+                                  course.level === "Intermediate" ? "متوسط" : "متقدم"
+                                }
+                              </span>
+                              <span className="flex items-center">
+                                <Users className="h-3 w-3 mr-1" />
+                                {course.students}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{course.category}</Badge>
+                        <Badge variant="outline">
+                          {course.category}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {course.isFree ? (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
+                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                             {language === "en" ? "Free" : "مجاني"}
                           </Badge>
                         ) : (
                           <span>
-                            {course.price} {course.currency}
+                            {new Intl.NumberFormat(language === "en" ? "en-US" : "ar-SA", {
+                              style: "currency",
+                              currency: course.currency
+                            }).format(course.price)}
                           </span>
                         )}
                       </TableCell>
                       <TableCell>
-                        {course.featured && (
-                          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 mr-2">
-                            {language === "en" ? "Featured" : "مميز"}
-                          </Badge>
-                        )}
-                        {course.showOrders ? (
-                          <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200">
-                            {language === "en" ? "Public Orders" : "طلبات عامة"}
-                          </Badge>
+                        {course.isPublished ? (
+                          <div className="flex items-center">
+                            <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                            <span className="text-sm">
+                              {language === "en" ? "Published" : "منشور"}
+                            </span>
+                          </div>
                         ) : (
-                          <Badge variant="outline" className="bg-neutral-100 text-neutral-800 hover:bg-neutral-100 border-neutral-200">
-                            {language === "en" ? "Hidden Orders" : "طلبات مخفية"}
-                          </Badge>
+                          <div className="flex items-center">
+                            <Archive className="h-4 w-4 text-yellow-500 mr-1" />
+                            <span className="text-sm">
+                              {language === "en" ? "Draft" : "مسودة"}
+                            </span>
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -173,9 +288,19 @@ const DashboardCourses = () => {
                               {language === "en" ? "Actions" : "الإجراءات"}
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                              <a href={`/courses/${course.id}`} target="_blank" rel="noopener noreferrer">
+                                <Eye className="h-4 w-4 mr-2" />
+                                {language === "en" ? "Preview" : "معاينة"}
+                              </a>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => navigate(`/dashboard/courses/editor/${course.id}`)}>
                               <Edit className="h-4 w-4 mr-2" />
                               {language === "en" ? "Edit" : "تعديل"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => archiveMutation.mutate(course.id)}>
+                              <Archive className="h-4 w-4 mr-2" />
+                              {language === "en" ? "Archive" : "أرشفة"}
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => setCourseToDelete(course.id)}
@@ -195,10 +320,10 @@ const DashboardCourses = () => {
           ) : (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
-                {searchTerm
+                {searchTerm || categoryFilter || levelFilter
                   ? language === "en" 
-                      ? "No courses match your search term" 
-                      : "لا توجد دورات تطابق بحثك"
+                      ? "No courses match your search criteria" 
+                      : "لا توجد دورات تطابق معايير البحث"
                   : language === "en" 
                       ? "No courses yet. Click 'Add Course' to create one."
                       : "لا توجد دورات حتى الآن. انقر على 'إضافة دورة' لإنشاء واحدة."

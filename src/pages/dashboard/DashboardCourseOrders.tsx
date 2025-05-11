@@ -1,13 +1,13 @@
 
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCourse, getCourseOrdersWithDetails, updateOrderStatus, deleteOrder } from "@/services/course-service";
+import { getCourseOrdersWithDetails, updateOrderStatus, deleteOrder } from "@/services/course-service";
 import { toast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
@@ -35,47 +35,42 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
   Search,
   MoreVertical,
   Check,
   X,
-  AlertCircle,
+  AlertTriangle,
   Clock,
   Trash,
-  ChevronLeft,
+  UserCircle,
+  BookOpen,
+  CalendarDays,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const DashboardCourseOrders = () => {
-  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { language } = useLanguage();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [orderToDelete, setOrderToDelete] = useState<number | null>(null);
-
-  // Fetch course data
-  const { data: course, isLoading: isLoadingCourse } = useQuery({
-    queryKey: ['course', id],
-    queryFn: () => id ? getCourse(id) : Promise.reject(new Error("No course ID provided")),
-    enabled: !!id
-  });
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
   // Fetch orders data
-  const { data: orders = [], isLoading: isLoadingOrders } = useQuery({
-    queryKey: ['course-orders', id],
-    queryFn: () => id ? getCourseOrdersWithDetails(id) : Promise.reject(new Error("No course ID provided")),
-    enabled: !!id
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ['course-orders'],
+    queryFn: getCourseOrdersWithDetails
   });
 
   // Update order status mutation
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ orderId, status }: { orderId: number; status: string }) => 
-      updateOrderStatus(orderId, status),
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => updateOrderStatus(id, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-orders', id] });
+      queryClient.invalidateQueries({ queryKey: ['course-orders'] });
       toast({
-        title: language === "en" ? "Order Status Updated" : "تم تحديث حالة الطلب",
+        title: language === "en" ? "Status Updated" : "تم تحديث الحالة",
         description: language === "en"
           ? "The order status has been updated successfully."
           : "تم تحديث حالة الطلب بنجاح.",
@@ -84,10 +79,10 @@ const DashboardCourseOrders = () => {
   });
 
   // Delete order mutation
-  const deleteOrderMutation = useMutation({
-    mutationFn: (orderId: number) => deleteOrder(orderId),
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteOrder(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-orders', id] });
+      queryClient.invalidateQueries({ queryKey: ['course-orders'] });
       toast({
         title: language === "en" ? "Order Deleted" : "تم حذف الطلب",
         description: language === "en"
@@ -98,75 +93,96 @@ const DashboardCourseOrders = () => {
     },
   });
 
-  // Filter orders by search term
+  // Get unique statuses
+  const statuses = Array.from(
+    new Set(orders.map(order => order.status))
+  );
+
+  // Filter orders by search term and status
   const filteredOrders = orders.filter(order => {
-    return (
-      order.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.status.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const matchesSearch = 
+      !searchTerm || 
+      order.courses?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.profiles?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.profiles?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.payment_id?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = !statusFilter || order.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
   });
 
-  // Handle status change
-  const handleStatusChange = (orderId: number, newStatus: string) => {
-    updateStatusMutation.mutate({ orderId, status: newStatus });
-  };
-
-  // Get status badge color
+  // Function to get a badge for the status
   const getStatusBadge = (status: string) => {
+    let color;
     switch (status.toLowerCase()) {
       case 'completed':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-          <Check className="h-3 w-3 mr-1" />
-          {language === "en" ? "Completed" : "مكتمل"}
-        </Badge>;
+      case 'paid':
+        color = "bg-green-100 text-green-800 hover:bg-green-100";
+        break;
       case 'pending':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-          <Clock className="h-3 w-3 mr-1" />
-          {language === "en" ? "Pending" : "قيد الانتظار"}
-        </Badge>;
+      case 'processing':
+        color = "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
+        break;
+      case 'failed':
       case 'cancelled':
-        return <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
-          <X className="h-3 w-3 mr-1" />
-          {language === "en" ? "Cancelled" : "ملغي"}
-        </Badge>;
+        color = "bg-red-100 text-red-800 hover:bg-red-100";
+        break;
       default:
-        return <Badge variant="outline">
-          <AlertCircle className="h-3 w-3 mr-1" />
-          {status}
-        </Badge>;
+        color = "bg-blue-100 text-blue-800 hover:bg-blue-100";
     }
+    
+    return <Badge variant="outline" className={color}>{status}</Badge>;
   };
 
   return (
-    <DashboardLayout
-      title={course ? (language === "en" ? `Orders: ${course.title}` : `الطلبات: ${course.titleAr}`) : (language === "en" ? "Course Orders" : "طلبات الدورة")}
+    <DashboardLayout 
+      title={language === "en" ? "Course Orders" : "طلبات الدورات"}
       breadcrumbs={[
         { label: language === "en" ? "Courses" : "الدورات", href: "/dashboard/courses" },
-        { label: course ? (language === "en" ? course.title : course.titleAr) : "...", href: `/dashboard/courses/editor/${id}` },
-        { label: language === "en" ? "Orders" : "الطلبات", href: `/dashboard/courses/orders/${id}` }
+        { label: language === "en" ? "Orders" : "الطلبات", href: "/dashboard/course-orders" }
       ]}
     >
       <Card>
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <Button variant="outline" onClick={() => window.history.back()}>
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              {language === "en" ? "Back to Course" : "العودة إلى الدورة"}
-            </Button>
-
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={language === "en" ? "Search orders..." : "بحث في الطلبات..."}
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder={language === "en" ? "Search orders..." : "بحث في الطلبات..."}
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              {statuses.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <select
+                    value={statusFilter || ""}
+                    onChange={(e) => setStatusFilter(e.target.value || null)}
+                    className="p-2 border rounded-md"
+                  >
+                    <option value="">
+                      {language === "en" ? "All statuses" : "جميع الحالات"}
+                    </option>
+                    {statuses.map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+            
+            <Button onClick={() => navigate("/dashboard/courses")}>
+              <BookOpen className="h-4 w-4 mr-2" />
+              {language === "en" ? "View All Courses" : "عرض جميع الدورات"}
+            </Button>
           </div>
-
-          {isLoadingCourse || isLoadingOrders ? (
+          
+          {isLoading ? (
             <div className="flex justify-center p-8">
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
             </div>
@@ -176,16 +192,16 @@ const DashboardCourseOrders = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>
-                      {language === "en" ? "Name" : "الاسم"}
+                      {language === "en" ? "Customer" : "العميل"}
                     </TableHead>
                     <TableHead>
-                      {language === "en" ? "Email" : "البريد الإلكتروني"}
+                      {language === "en" ? "Course" : "الدورة"}
+                    </TableHead>
+                    <TableHead>
+                      {language === "en" ? "Amount" : "المبلغ"}
                     </TableHead>
                     <TableHead>
                       {language === "en" ? "Date" : "التاريخ"}
-                    </TableHead>
-                    <TableHead>
-                      {language === "en" ? "Price" : "السعر"}
                     </TableHead>
                     <TableHead>
                       {language === "en" ? "Status" : "الحالة"}
@@ -198,21 +214,46 @@ const DashboardCourseOrders = () => {
                 <TableBody>
                   {filteredOrders.map((order) => (
                     <TableRow key={order.id}>
-                      <TableCell className="font-medium">
-                        {order.name}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={order.profiles?.avatar} />
+                            <AvatarFallback>
+                              <UserCircle className="h-5 w-5" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{order.profiles?.name}</div>
+                            <div className="text-xs text-muted-foreground">{order.profiles?.email}</div>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <a href={`mailto:${order.email}`} className="text-blue-600 hover:underline">
-                          {order.email}
-                        </a>
+                        <div className="flex items-center gap-2">
+                          {order.courses?.image && (
+                            <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0">
+                              <img 
+                                src={order.courses.image} 
+                                alt={language === "en" ? order.courses.title : order.courses.titleAr} 
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="font-medium">
+                            {language === "en" ? order.courses?.title : order.courses?.titleAr}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Intl.NumberFormat(language === "en" ? "en-US" : "ar-SA", {
+                          style: "currency",
+                          currency: order.currency
+                        }).format(order.amount)}
                       </TableCell>
                       <TableCell>
                         {new Date(order.created_at).toLocaleDateString(
                           language === "en" ? undefined : "ar-SA"
                         )}
-                      </TableCell>
-                      <TableCell>
-                        {order.price} {order.price > 0 ? course?.currency : ''}
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(order.status)}
@@ -226,27 +267,28 @@ const DashboardCourseOrders = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>
-                              {language === "en" ? "Change Status" : "تغيير الحالة"}
+                              {language === "en" ? "Actions" : "الإجراءات"}
                             </DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleStatusChange(order.id, "completed")}>
-                              <Check className="h-4 w-4 mr-2 text-green-600" />
-                              {language === "en" ? "Mark as Completed" : "وضع علامة مكتمل"}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => statusMutation.mutate({ id: order.id, status: "completed" })}>
+                              <Check className="h-4 w-4 mr-2 text-green-500" />
+                              {language === "en" ? "Mark Completed" : "تمييز كمكتمل"}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(order.id, "pending")}>
-                              <Clock className="h-4 w-4 mr-2 text-yellow-600" />
-                              {language === "en" ? "Mark as Pending" : "وضع علامة قيد الانتظار"}
+                            <DropdownMenuItem onClick={() => statusMutation.mutate({ id: order.id, status: "pending" })}>
+                              <Clock className="h-4 w-4 mr-2 text-yellow-500" />
+                              {language === "en" ? "Mark Pending" : "تمييز كقيد الانتظار"}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(order.id, "cancelled")}>
-                              <X className="h-4 w-4 mr-2 text-red-600" />
-                              {language === "en" ? "Mark as Cancelled" : "وضع علامة ملغي"}
+                            <DropdownMenuItem onClick={() => statusMutation.mutate({ id: order.id, status: "cancelled" })}>
+                              <X className="h-4 w-4 mr-2 text-red-500" />
+                              {language === "en" ? "Mark Cancelled" : "تمييز كملغي"}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
+                            <DropdownMenuItem 
                               onClick={() => setOrderToDelete(order.id)}
                               className="text-red-600"
                             >
                               <Trash className="h-4 w-4 mr-2" />
-                              {language === "en" ? "Delete Order" : "حذف الطلب"}
+                              {language === "en" ? "Delete" : "حذف"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -258,14 +300,18 @@ const DashboardCourseOrders = () => {
             </div>
           ) : (
             <div className="text-center py-8">
+              <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <p className="text-lg font-medium mb-2">
+                {language === "en" ? "No orders found" : "لم يتم العثور على طلبات"}
+              </p>
               <p className="text-muted-foreground">
-                {searchTerm
-                  ? language === "en"
-                    ? "No orders match your search term"
-                    : "لا توجد طلبات تطابق بحثك"
-                  : language === "en"
-                    ? "No orders yet for this course."
-                    : "لا توجد طلبات لهذه الدورة حتى الآن."
+                {searchTerm || statusFilter
+                  ? language === "en" 
+                      ? "No orders match your search criteria" 
+                      : "لا توجد طلبات تطابق معايير البحث"
+                  : language === "en" 
+                      ? "No course orders have been placed yet."
+                      : "لم يتم وضع أي طلبات للدورات حتى الآن."
                 }
               </p>
             </div>
@@ -274,8 +320,8 @@ const DashboardCourseOrders = () => {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={!!orderToDelete}
+      <AlertDialog 
+        open={!!orderToDelete} 
         onOpenChange={(open) => !open && setOrderToDelete(null)}
       >
         <AlertDialogContent>
@@ -294,8 +340,8 @@ const DashboardCourseOrders = () => {
             <AlertDialogCancel>
               {language === "en" ? "Cancel" : "إلغاء"}
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => orderToDelete && deleteOrderMutation.mutate(orderToDelete)}
+            <AlertDialogAction 
+              onClick={() => orderToDelete && deleteMutation.mutate(orderToDelete)}
               className="bg-red-600 hover:bg-red-700"
             >
               {language === "en" ? "Delete" : "حذف"}
