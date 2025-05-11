@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { classNames } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface RichTextEditorProps {
   value: string;
@@ -64,7 +64,7 @@ export function RichTextEditor({
 
   return (
     <div 
-      className={classNames(
+      className={cn(
         "rich-text-editor border rounded-md overflow-hidden",
         dir === "rtl" ? "text-right" : "text-left"
       )}
