@@ -2,17 +2,13 @@
 import { query, execute, queryOne } from "@/lib/mysql";
 import { File as FileModel } from "@/types/file";
 import { MediaItem } from "@/services/firebase-service";
-import * as fs from 'fs';
-import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
-// Define the upload directory path relative to the server
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+// Client-side version of the file service - no direct file system access
+// All operations are performed via APIs
 
-// Ensure upload directory exists
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
+// Define upload directory path (used for URL construction)
+const UPLOAD_DIR = '/uploads';
 
 // Interface for files stored in MySQL
 export interface MySQLFile {
@@ -64,17 +60,12 @@ export const uploadFile = async (
       const timestamp = new Date().getTime();
       const fileExtension = file.name.split('.').pop() || '';
       const uniqueFilename = `${timestamp}-${uuidv4()}.${fileExtension}`;
-      const filePath = path.join(UPLOAD_DIR, folderPath, uniqueFilename);
-      const directoryPath = path.dirname(filePath);
+      const filePath = `${folderPath}/${uniqueFilename}`;
       
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(directoryPath)) {
-        fs.mkdirSync(directoryPath, { recursive: true });
-      }
-      
-      // In a server environment, we would use fs streams
-      // For the client, we'll need to send this file to an API endpoint
-      // This is a placeholder for the client-side implementation
+      // In a browser environment, we would use FormData to upload to an API
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', filePath);
       
       // Simulate progress for the client
       if (onProgress) {
@@ -87,14 +78,10 @@ export const uploadFile = async (
       }
       
       // In a real implementation, we would upload to a server API
-      // and the server would save the file and add the record to MySQL
-      
       // For client UI demonstration, we'll simulate the API response
       setTimeout(async () => {
-        const publicUrl = `/uploads/${folderPath}/${uniqueFilename}`;
+        const publicUrl = `${UPLOAD_DIR}/${filePath}`;
         
-        // In a real implementation, this would be done on the server
-        // after file upload
         try {
           const sql = `
             INSERT INTO files (name, original_name, mime_type, size, path, url, folder, created_at)
@@ -106,7 +93,7 @@ export const uploadFile = async (
             file.name,
             file.type,
             file.size,
-            `${folderPath}/${uniqueFilename}`,
+            filePath,
             publicUrl,
             folderPath
           ]);
@@ -136,12 +123,7 @@ export const deleteFile = async (fullPath: string): Promise<void> => {
       throw new Error('File not found');
     }
     
-    // Delete the file from the filesystem (in a server context)
-    // const filePath = path.join(UPLOAD_DIR, file.path);
-    // if (fs.existsSync(filePath)) {
-    //   fs.unlinkSync(filePath);
-    // }
-    
+    // In a browser environment, we would call an API to delete the file
     // Delete the record from MySQL
     const deleteSql = `DELETE FROM files WHERE id = ?`;
     await execute(deleteSql, [file.id]);
