@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   ChevronRight,
-  Home
+  Home,
+  Image
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,11 @@ export function DashboardLayout({ children, title, breadcrumbs = [] }: Dashboard
       icon: <FolderKanban className="h-5 w-5" />,
       label: language === "en" ? "Projects" : "المشاريع",
       href: "/dashboard/projects",
+    },
+    {
+      icon: <Image className="h-5 w-5" />,
+      label: language === "en" ? "Media" : "الوسائط",
+      href: "/dashboard/media",
     },
     {
       icon: <Settings className="h-5 w-5" />,

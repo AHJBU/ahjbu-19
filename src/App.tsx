@@ -21,6 +21,7 @@ import Files from "./pages/Files";
 import Dashboard from "./pages/dashboard/Dashboard";
 import DashboardBlog from "./pages/dashboard/DashboardBlog";
 import DashboardProjects from "./pages/dashboard/DashboardProjects";
+import MediaManager from "./pages/dashboard/MediaManager";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
 import BlogEditor from "./pages/dashboard/BlogEditor";
 import ProjectEditor from "./pages/dashboard/ProjectEditor";
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/dashboard/blog/editor/:id?" element={<ProtectedRoute><BlogEditor /></ProtectedRoute>} />
                 <Route path="/dashboard/projects" element={<ProtectedRoute><DashboardProjects /></ProtectedRoute>} />
                 <Route path="/dashboard/projects/editor/:id?" element={<ProtectedRoute><ProjectEditor /></ProtectedRoute>} />
+                <Route path="/dashboard/media" element={<ProtectedRoute><MediaManager /></ProtectedRoute>} />
                 <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

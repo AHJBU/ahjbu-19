@@ -1,121 +1,83 @@
-
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { useLanguage } from '@/context/LanguageContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
-import { useToast } from '@/components/ui/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, Save, X, Plus, ChevronLeft } from 'lucide-react';
-import { format } from 'date-fns';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPost, createPost, updatePost } from '@/services/supabase-service';
-import { PostType } from '@/data/posts';
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useLanguage } from "@/context/LanguageContext";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { X, LoaderCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getPost, updatePost, createPost } from "@/services/supabase-service";
+import { PostType } from "@/data/posts";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { MediaSelector } from "@/components/media/MediaSelector";
 
 const BlogEditor = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
   const { language } = useLanguage();
-  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
+  const isEditing = !!id;
   const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // State for form
-  const [title, setTitle] = useState('');
-  const [titleAr, setTitleAr] = useState('');
-  const [excerpt, setExcerpt] = useState('');
-  const [excerptAr, setExcerptAr] = useState('');
-  const [content, setContent] = useState('');
-  const [contentAr, setContentAr] = useState('');
-  const [image, setImage] = useState('');
-  const [date, setDate] = useState<Date>(new Date());
-  const [author, setAuthor] = useState('');
+
+  const [title, setTitle] = useState("");
+  const [titleAr, setTitleAr] = useState("");
+  const [excerpt, setExcerpt] = useState("");
+  const [excerptAr, setExcerptAr] = useState("");
+  const [content, setContent] = useState("");
+  const [contentAr, setContentAr] = useState("");
+  const [image, setImage] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [author, setAuthor] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [featured, setFeatured] = useState(false);
-  const [tagInput, setTagInput] = useState('');
 
-  // Fetch post data if editing existing post
-  const { data: post, isLoading: isLoadingPost } = useQuery({
+  const { data: post, isLoading: isPostLoading } = useQuery<PostType>({
     queryKey: ['post', id],
-    queryFn: () => getPost(id as string),
-    enabled: !!id,
-    onSuccess: (data) => {
-      if (data) {
-        setTitle(data.title);
-        setTitleAr(data.titleAr);
-        setExcerpt(data.excerpt);
-        setExcerptAr(data.excerptAr);
-        setContent(data.content);
-        setContentAr(data.contentAr);
-        setImage(data.image);
-        setDate(new Date(data.date));
-        setAuthor(data.author);
-        setTags(data.tags);
-        setFeatured(data.featured);
-      }
-    }
+    queryFn: () => getPost(id!),
+    enabled: isEditing,
+    initialData: null,
   });
 
-  // Create mutation
-  const createMutation = useMutation({
-    mutationFn: createPost,
-    onSuccess: () => {
-      toast({
-        title: language === 'en' ? 'Success!' : 'تم بنجاح!',
-        description: language === 'en' ? 'Post created successfully.' : 'تم إنشاء المنشور بنجاح.',
-      });
-      navigate('/dashboard/blog');
-    },
-    onError: (error) => {
-      console.error('Error creating post:', error);
-      toast({
-        title: language === 'en' ? 'Error' : 'خطأ',
-        description: language === 'en' ? 'Failed to create post.' : 'فشل في إنشاء المنشور.',
-        variant: 'destructive',
-      });
+  useEffect(() => {
+    if (post) {
+      setTitle(post.title);
+      setTitleAr(post.titleAr);
+      setExcerpt(post.excerpt);
+      setExcerptAr(post.excerptAr);
+      setContent(post.content);
+      setContentAr(post.contentAr);
+      setImage(post.image);
+      setDate(post.date.split('T')[0]);
+      setAuthor(post.author);
+      setTags(post.tags);
+      setFeatured(post.featured);
     }
-  });
+  }, [post]);
 
-  // Update mutation
-  const updateMutation = useMutation({
-    mutationFn: ({ id, post }: { id: string; post: Partial<PostType> }) => updatePost(id, post),
+  const createPostMutation = useMutation({
+    mutationFn: (newPost: Omit<PostType, 'id'>) => createPost(newPost),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['post', id] });
-      
-      toast({
-        title: language === 'en' ? 'Success!' : 'تم بنجاح!',
-        description: language === 'en' ? 'Post updated successfully.' : 'تم تحديث المنشور بنجاح.',
-      });
-      navigate('/dashboard/blog');
+      navigate("/dashboard/blog");
     },
-    onError: (error) => {
-      console.error('Error updating post:', error);
-      toast({
-        title: language === 'en' ? 'Error' : 'خطأ',
-        description: language === 'en' ? 'Failed to update post.' : 'فشل في تحديث المنشور.',
-        variant: 'destructive',
-      });
-    }
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const updatePostMutation = useMutation({
+    mutationFn: (updatedPost: Partial<PostType>) => updatePost(id!, updatedPost),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      navigate("/dashboard/blog");
+    },
+  });
+
+  const isLoading = createPostMutation.isLoading || updatePostMutation.isLoading;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
     const postData = {
       title,
@@ -125,275 +87,215 @@ const BlogEditor = () => {
       content,
       contentAr,
       image,
-      date: date.toISOString(),
+      date,
       author,
       tags,
       featured,
     };
 
-    if (id) {
-      updateMutation.mutate({ id, post: postData });
+    if (isEditing) {
+      updatePostMutation.mutate(postData);
     } else {
-      createMutation.mutate(postData as PostType);
+      createPostMutation.mutate(postData);
     }
   };
-
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
-  };
-
-  if (isLoadingPost) {
-    return (
-      <DashboardLayout 
-        title={language === 'en' ? 'Loading Post...' : 'جاري تحميل المنشور...'}
-        breadcrumbs={[
-          { label: language === 'en' ? 'Blog' : 'المدونة', href: '/dashboard/blog' },
-          { label: language === 'en' ? 'Edit Post' : 'تحرير منشور', href: `/dashboard/blog/editor/${id}` },
-        ]}
-      >
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout
-      title={id ? (language === 'en' ? 'Edit Post' : 'تحرير منشور') : (language === 'en' ? 'New Post' : 'منشور جديد')}
+      title={isEditing ? (language === "en" ? "Edit Blog Post" : "تعديل مقال") : (language === "en" ? "New Blog Post" : "مقال جديد")}
       breadcrumbs={[
-        { label: language === 'en' ? 'Blog' : 'المدونة', href: '/dashboard/blog' },
-        { label: id ? (language === 'en' ? 'Edit Post' : 'تحرير منشور') : (language === 'en' ? 'New Post' : 'منشور جديد'), href: id ? `/dashboard/blog/editor/${id}` : '/dashboard/blog/editor' },
+        { label: language === "en" ? "Blog Posts" : "المدونة", href: "/dashboard/blog" },
+        { label: isEditing ? (language === "en" ? "Edit" : "تعديل") : (language === "en" ? "New" : "جديد"), href: `/dashboard/blog/editor${isEditing ? `/${id}` : ''}` }
       ]}
     >
-      <div className="mb-6">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/dashboard/blog')}
-          className="flex items-center gap-2"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          {language === 'en' ? 'Back to Posts' : 'العودة إلى المنشورات'}
-        </Button>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main content area */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Title and content in tabs */}
-            <Card>
-              <CardContent className="p-6">
-                <Tabs defaultValue="english" className="w-full">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="english">English</TabsTrigger>
-                    <TabsTrigger value="arabic">العربية</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="english" className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">{language === 'en' ? 'Title' : 'العنوان'}</Label>
-                      <Input
-                        id="title"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder={language === 'en' ? 'Post title' : 'عنوان المنشور'}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="excerpt">{language === 'en' ? 'Excerpt' : 'مقتطف'}</Label>
-                      <Textarea
-                        id="excerpt"
-                        value={excerpt}
-                        onChange={(e) => setExcerpt(e.target.value)}
-                        placeholder={language === 'en' ? 'Brief description of your post' : 'وصف موجز للمنشور'}
-                        rows={3}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="content">{language === 'en' ? 'Content' : 'المحتوى'}</Label>
-                      <RichTextEditor
-                        value={content}
-                        onChange={setContent}
-                        height={400}
-                        placeholder={language === 'en' ? 'Write your post content here...' : 'اكتب محتوى المنشور هنا...'}
-                      />
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="arabic" className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="titleAr">العنوان</Label>
-                      <Input
-                        id="titleAr"
-                        value={titleAr}
-                        onChange={(e) => setTitleAr(e.target.value)}
-                        placeholder="عنوان المنشور"
-                        dir="rtl"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="excerptAr">مقتطف</Label>
-                      <Textarea
-                        id="excerptAr"
-                        value={excerptAr}
-                        onChange={(e) => setExcerptAr(e.target.value)}
-                        placeholder="وصف موجز للمنشور"
-                        rows={3}
-                        dir="rtl"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="contentAr">المحتوى</Label>
-                      <RichTextEditor
-                        value={contentAr}
-                        onChange={setContentAr}
-                        height={400}
-                        placeholder="اكتب محتوى المنشور هنا..."
-                        dir="rtl"
-                      />
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Sidebar with metadata */}
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                {/* Image URL */}
-                <div className="space-y-2">
-                  <Label htmlFor="image">{language === 'en' ? 'Featured Image URL' : 'رابط الصورة المميزة'}</Label>
+      <Card>
+        <CardHeader>
+          <CardTitle>{isEditing ? (language === "en" ? "Edit Blog Post" : "تعديل مقال") : (language === "en" ? "New Blog Post" : "مقال جديد")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-8" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left column - English content */}
+              <div className="space-y-6">
+                <div>
+                  <Label htmlFor="title">{language === "en" ? "Title (English)" : "العنوان (بالإنجليزية)"}</Label>
                   <Input
-                    id="image"
-                    value={image}
-                    onChange={(e) => setImage(e.target.value)}
-                    placeholder={language === 'en' ? 'https://example.com/image.jpg' : 'https://example.com/image.jpg'}
+                    id="title"
+                    placeholder={language === "en" ? "Post title in English" : "عنوان المنشور بالإنجليزية"}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
                 
-                {/* Publish Date */}
-                <div className="space-y-2">
-                  <Label htmlFor="date">{language === 'en' ? 'Publish Date' : 'تاريخ النشر'}</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : language === 'en' ? 'Select a date' : 'اختر تاريخ'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={date}
-                        onSelect={(date) => date && setDate(date)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                {/* Author */}
-                <div className="space-y-2">
-                  <Label htmlFor="author">{language === 'en' ? 'Author' : 'الكاتب'}</Label>
-                  <Input
-                    id="author"
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    placeholder={language === 'en' ? 'Author name' : 'اسم الكاتب'}
+                <div>
+                  <Label htmlFor="excerpt">{language === "en" ? "Excerpt (English)" : "ملخص (بالإنجليزية)"}</Label>
+                  <Textarea
+                    id="excerpt"
+                    placeholder={language === "en" ? "Brief description in English" : "وصف موجز بالإنجليزية"}
+                    value={excerpt}
+                    onChange={(e) => setExcerpt(e.target.value)}
+                    rows={3}
                   />
                 </div>
                 
-                {/* Featured */}
+                <div>
+                  <Label>{language === "en" ? "Content (English)" : "المحتوى (بالإنجليزية)"}</Label>
+                  <RichTextEditor
+                    value={content}
+                    onChange={setContent}
+                    placeholder={language === "en" ? "Write your post content in English..." : "اكتب محتوى المنشور بالإنجليزية..."}
+                    height={400}
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+              
+              {/* Right column - Arabic content */}
+              <div className="space-y-6">
+                <div>
+                  <Label htmlFor="titleAr">{language === "en" ? "Title (Arabic)" : "العنوان (بالعربية)"}</Label>
+                  <Input
+                    id="titleAr"
+                    placeholder={language === "en" ? "Post title in Arabic" : "عنوان المنشور بالعربية"}
+                    value={titleAr}
+                    onChange={(e) => setTitleAr(e.target.value)}
+                    dir="rtl"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="excerptAr">{language === "en" ? "Excerpt (Arabic)" : "ملخص (بالعربية)"}</Label>
+                  <Textarea
+                    id="excerptAr"
+                    placeholder={language === "en" ? "Brief description in Arabic" : "وصف موجز بالعربية"}
+                    value={excerptAr}
+                    onChange={(e) => setExcerptAr(e.target.value)}
+                    dir="rtl"
+                    rows={3}
+                  />
+                </div>
+                
+                <div>
+                  <Label>{language === "en" ? "Content (Arabic)" : "المحتوى (بالعربية)"}</Label>
+                  <RichTextEditor
+                    value={contentAr}
+                    onChange={setContentAr}
+                    placeholder={language === "en" ? "Write your post content in Arabic..." : "اكتب محتوى المنشور بالعربية..."}
+                    height={400}
+                    dir="rtl"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Post metadata */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div>
+                <Label htmlFor="author">{language === "en" ? "Author" : "المؤلف"}</Label>
+                <Input
+                  id="author"
+                  placeholder={language === "en" ? "Author name" : "اسم المؤلف"}
+                  value={author}
+                  onChange={(e) => setAuthor(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="date">{language === "en" ? "Publish Date" : "تاريخ النشر"}</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="tags">{language === "en" ? "Tags" : "الوسوم"}</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => {
+                      const newTag = prompt(language === "en" ? "Enter tag name:" : "أدخل اسم الوسم:");
+                      if (newTag && !tags.includes(newTag)) {
+                        setTags([...tags, newTag]);
+                      }
+                    }}
+                  >
+                    + {language === "en" ? "Add" : "إضافة"}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="flex items-center gap-1 cursor-pointer"
+                      onClick={() => setTags(tags.filter(t => t !== tag))}
+                    >
+                      {tag}
+                      <X className="h-3 w-3" />
+                    </Badge>
+                  ))}
+                  {tags.length === 0 && <span className="text-sm text-muted-foreground">{language === "en" ? "No tags added" : "لم تتم إضافة وسوم"}</span>}
+                </div>
+              </div>
+            </div>
+            
+            {/* Featured post and image selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label>{language === "en" ? "Featured Image" : "صورة المقال"}</Label>
+                <MediaSelector
+                  value={image}
+                  onChange={setImage}
+                  type="image"
+                />
+              </div>
+              
+              <div className="flex flex-col justify-between">
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="featured" 
+                  <Switch
+                    id="featured"
                     checked={featured}
-                    onCheckedChange={(checked) => setFeatured(checked === true)}
+                    onCheckedChange={setFeatured}
                   />
-                  <Label htmlFor="featured" className="cursor-pointer">
-                    {language === 'en' ? 'Featured post' : 'منشور مميز'}
+                  <Label htmlFor="featured">
+                    {language === "en" ? "Featured post" : "مقال مميز"}
                   </Label>
                 </div>
-                
-                {/* Tags */}
-                <div className="space-y-2">
-                  <Label htmlFor="tags">{language === 'en' ? 'Tags' : 'الوسوم'}</Label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id="tagInput"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      placeholder={language === 'en' ? 'Add tag' : 'إضافة وسم'}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    />
-                    <Button type="button" size="sm" onClick={handleAddTag}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {tags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                        {tag}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-4 w-4 p-0 hover:bg-transparent"
-                          onClick={() => handleRemoveTag(tag)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="px-6 py-4 border-t flex justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/dashboard/blog')}
-                >
-                  {language === 'en' ? 'Cancel' : 'إلغاء'}
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full"></div>
-                      {language === 'en' ? 'Saving...' : 'جاري الحفظ...'}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      {language === 'en' ? 'Save Post' : 'حفظ المنشور'}
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-        </div>
-      </form>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {language === "en"
+                    ? "Featured posts will be displayed prominently on the homepage."
+                    : "ستعرض المقالات المميزة بشكل بارز على الصفحة الرئيسية."
+                  }
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/dashboard/blog")}
+              >
+                {language === "en" ? "Cancel" : "إلغاء"}
+              </Button>
+              
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? (
+                  <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> {language === "en" ? "Saving..." : "جاري الحفظ..."}</>
+                ) : (
+                  language === "en" ? "Save Post" : "حفظ المقال"
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </DashboardLayout>
   );
 };
