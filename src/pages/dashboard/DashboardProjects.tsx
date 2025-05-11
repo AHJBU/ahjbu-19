@@ -19,6 +19,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 
 const DashboardProjects = () => {
@@ -26,6 +37,7 @@ const DashboardProjects = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   
   const filteredProjects = projects.filter(project => {
     const title = language === "en" ? project.title : project.titleAr;
@@ -42,6 +54,13 @@ const DashboardProjects = () => {
         ? "The project has been deleted successfully" 
         : "تم حذف المشروع بنجاح",
     });
+    
+    // Close dialog by resetting projectToDelete
+    setProjectToDelete(null);
+  };
+
+  const confirmDelete = (id: string) => {
+    setProjectToDelete(id);
   };
 
   return (
@@ -105,7 +124,7 @@ const DashboardProjects = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       className="text-red-500 focus:text-red-500"
-                      onClick={() => handleDelete(project.id)}
+                      onClick={() => confirmDelete(project.id)}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       {language === "en" ? "Delete" : "حذف"}
@@ -154,6 +173,33 @@ const DashboardProjects = () => {
           </div>
         )}
       </div>
+      
+      <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === "en" ? "Are you sure you want to delete this project?" : "هل أنت متأكد أنك تريد حذف هذا المشروع؟"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === "en" 
+                ? "This action cannot be undone. This will permanently delete the project."
+                : "لا يمكن التراجع عن هذا الإجراء. سيؤدي ذلك إلى حذف المشروع نهائيًا."
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {language === "en" ? "Cancel" : "إلغاء"}
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => projectToDelete && handleDelete(projectToDelete)}
+            >
+              {language === "en" ? "Delete" : "حذف"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

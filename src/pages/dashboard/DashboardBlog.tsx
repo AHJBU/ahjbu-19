@@ -19,13 +19,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, MoreVertical, Eye, Pencil, Trash2 } from "lucide-react";
 import { posts } from "@/data/posts";
+import { useToast } from "@/components/ui/use-toast";
 
 const DashboardBlog = () => {
   const { language } = useLanguage();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
   
   const filteredPosts = posts.filter(post => {
     const title = language === "en" ? post.title : post.titleAr;
@@ -49,6 +62,25 @@ const DashboardBlog = () => {
         </Badge>
       );
     }
+  };
+
+  const confirmDelete = (id: string) => {
+    setPostToDelete(id);
+  };
+
+  const handleDelete = (id: string) => {
+    // This would delete from database in a real implementation
+    console.log(`Delete post with ID: ${id}`);
+    
+    toast({
+      title: language === "en" ? "Post deleted" : "تم حذف المنشور",
+      description: language === "en" 
+        ? "The post has been deleted successfully" 
+        : "تم حذف المنشور بنجاح",
+    });
+    
+    // Close dialog by resetting postToDelete
+    setPostToDelete(null);
   };
 
   return (
@@ -126,7 +158,10 @@ const DashboardBlog = () => {
                             {language === "en" ? "Edit" : "تعديل"}
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500 focus:text-red-500">
+                        <DropdownMenuItem 
+                          className="text-red-500 focus:text-red-500"
+                          onClick={() => confirmDelete(post.id)}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           {language === "en" ? "Delete" : "حذف"}
                         </DropdownMenuItem>
@@ -145,6 +180,33 @@ const DashboardBlog = () => {
           </TableBody>
         </Table>
       </div>
+      
+      <AlertDialog open={!!postToDelete} onOpenChange={() => setPostToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === "en" ? "Are you sure you want to delete this post?" : "هل أنت متأكد أنك تريد حذف هذا المنشور؟"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === "en" 
+                ? "This action cannot be undone. This will permanently delete the post."
+                : "لا يمكن التراجع عن هذا الإجراء. سيؤدي ذلك إلى حذف المنشور نهائيًا."
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {language === "en" ? "Cancel" : "إلغاء"}
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => postToDelete && handleDelete(postToDelete)}
+            >
+              {language === "en" ? "Delete" : "حذف"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
