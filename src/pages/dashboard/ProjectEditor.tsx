@@ -5,7 +5,6 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +18,7 @@ import { MediaSelector } from "@/components/media/MediaSelector";
 const ProjectEditor = () => {
   const { language } = useLanguage();
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id?: string }>();
   const isEditing = !!id;
   const queryClient = useQueryClient();
 
@@ -35,10 +34,12 @@ const ProjectEditor = () => {
   const [technologies, setTechnologies] = useState<string[]>([]);
   const [year, setYear] = useState("");
 
-  const { data: project, isLoading: isProjectLoading } = useQuery<ProjectType>({
+  // Use TanStack Query v5 syntax
+  const { data: project, isLoading: isProjectLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: () => getProject(id!),
     enabled: isEditing,
+    initialData: null as ProjectType | null,
   });
 
   useEffect(() => {
@@ -57,17 +58,24 @@ const ProjectEditor = () => {
     }
   }, [project]);
 
-  const mutation = useMutation<ProjectType, Error, Omit<ProjectType, "id">>(
-    isEditing
-      ? (updatedProject) => updateProject(id!, updatedProject)
-      : (newProject) => createProject(newProject),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(["projects"]);
-        navigate("/dashboard/projects");
-      },
-    }
-  );
+  // Use TanStack Query v5 mutation syntax
+  const createProjectMutation = useMutation({
+    mutationFn: (newProject: Omit<ProjectType, "id">) => createProject(newProject),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      navigate("/dashboard/projects");
+    },
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: (updatedProject: Partial<ProjectType>) => updateProject(id!, updatedProject),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      navigate("/dashboard/projects");
+    },
+  });
+
+  const isLoading = createProjectMutation.isPending || updateProjectMutation.isPending || isProjectLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,10 +94,12 @@ const ProjectEditor = () => {
       year,
     };
 
-    mutation.mutate(projectData);
+    if (isEditing) {
+      updateProjectMutation.mutate(projectData);
+    } else {
+      createProjectMutation.mutate(projectData);
+    }
   };
-
-  const isLoading = mutation.isLoading || isProjectLoading;
 
   return (
     <DashboardLayout
@@ -185,7 +195,7 @@ const ProjectEditor = () => {
                 <Label htmlFor="year">{language === "en" ? "Year" : "السنة"}</Label>
                 <Input
                   id="year"
-                  placeholder={language === "en" ? "2023" : "٢٠٢٣"}
+                  placeholder={language === "en" ? "2023" : "١٢٣٤"}
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
                 />

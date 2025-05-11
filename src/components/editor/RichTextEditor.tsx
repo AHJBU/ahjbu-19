@@ -1,89 +1,108 @@
 
-import { useState, useEffect } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
-import { useLanguage } from '@/context/LanguageContext';
+import React, { useEffect, useState } from "react";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import { classNames } from "@/lib/utils";
 
 interface RichTextEditorProps {
   value: string;
-  onChange: (content: string) => void;
+  onChange: (value: string) => void;
   placeholder?: string;
   height?: number;
-  dir?: 'ltr' | 'rtl';
+  dir?: "ltr" | "rtl";
 }
 
 export function RichTextEditor({
   value,
   onChange,
-  placeholder = 'Write something...',
+  placeholder = "Start writing...",
   height = 300,
-  dir = 'ltr'
+  dir = "ltr"
 }: RichTextEditorProps) {
-  const [mounted, setMounted] = useState(false);
-  const { language } = useLanguage();
+  const [isMounted, setIsMounted] = useState(false);
+  const [editorValue, setEditorValue] = useState(value || "");
 
-  // Modules for toolbar
+  // Since ReactQuill is a client-side only component, we need to make sure
+  // it's only rendered after the component is mounted
+  useEffect(() => {
+    setIsMounted(true);
+    setEditorValue(value || "");
+  }, [value]);
+
+  const handleChange = (content: string) => {
+    setEditorValue(content);
+    onChange(content);
+  };
+
   const modules = {
     toolbar: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      [{ 'align': [] }],
-      ['link', 'image'],
-      [{ 'color': [] }, { 'background': [] }],
-      ['clean']
+      [{ header: [1, 2, 3, 4, 5, 6, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      [{ indent: "-1" }, { indent: "+1" }],
+      [{ align: [] }],
+      ["link", "image"],
+      [{ direction: dir === "rtl" ? "rtl" : "ltr" }],
+      ["clean"],
     ],
   };
 
-  // Formats allowed in the editor
   const formats = [
-    'header',
-    'bold', 'italic', 'underline', 'strike',
-    'list', 'bullet',
-    'align',
-    'link', 'image',
-    'color', 'background'
+    "header",
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "list",
+    "bullet",
+    "indent",
+    "align",
+    "link",
+    "image",
+    "direction",
   ];
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div 
-        className="border rounded-md p-2" 
-        style={{ height, minHeight: height }}
-      >
-        <div className="animate-pulse h-full bg-muted"></div>
-      </div>
-    );
-  }
-
   return (
-    <div dir={dir} className="rich-text-editor">
-      <ReactQuill
-        theme="snow"
-        value={value || ''}
-        onChange={onChange}
-        modules={modules}
-        formats={formats}
-        placeholder={placeholder || (language === 'en' ? 'Write something...' : 'اكتب شيئًا...')}
-        style={{ height, direction: dir }}
-      />
-      <style jsx>{`
-        .rich-text-editor .ql-container {
-          min-height: ${height - 42}px;
-          font-size: 16px;
-        }
-        .rich-text-editor .ql-editor {
-          min-height: ${height - 42}px;
-          direction: ${dir};
-        }
-        .rich-text-editor .ql-toolbar {
-          direction: ltr;
-        }
-      `}</style>
+    <div 
+      className={classNames(
+        "rich-text-editor border rounded-md overflow-hidden",
+        dir === "rtl" ? "text-right" : "text-left"
+      )}
+      dir={dir}
+    >
+      {/* Added custom styles for RTL support */}
+      <style>
+        {`
+          .ql-editor {
+            min-height: ${height}px;
+            direction: ${dir};
+            text-align: ${dir === "rtl" ? "right" : "left"};
+          }
+          
+          .ql-snow .ql-picker.ql-header {
+            direction: ltr;
+          }
+        `}
+      </style>
+      
+      {isMounted ? (
+        <ReactQuill
+          theme="snow"
+          value={editorValue}
+          onChange={handleChange}
+          modules={modules}
+          formats={formats}
+          placeholder={placeholder}
+          style={{ height }}
+        />
+      ) : (
+        <div 
+          className="bg-muted/20 p-4 min-h-[200px]"
+          style={{ height }}
+        >
+          <p className="text-muted-foreground">{placeholder}</p>
+        </div>
+      )}
     </div>
   );
 }

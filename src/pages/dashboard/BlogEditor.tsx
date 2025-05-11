@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLanguage } from "@/context/LanguageContext";
@@ -35,11 +36,12 @@ const BlogEditor = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [featured, setFeatured] = useState(false);
 
-  const { data: post, isLoading: isPostLoading } = useQuery<PostType>({
+  // Use TanStack Query v5 syntax
+  const { data: post, isLoading: isPostLoading } = useQuery({
     queryKey: ['post', id],
     queryFn: () => getPost(id!),
     enabled: isEditing,
-    initialData: null,
+    initialData: null as PostType | null,
   });
 
   useEffect(() => {
@@ -58,6 +60,7 @@ const BlogEditor = () => {
     }
   }, [post]);
 
+  // Use TanStack Query v5 mutation syntax
   const createPostMutation = useMutation({
     mutationFn: (newPost: Omit<PostType, 'id'>) => createPost(newPost),
     onSuccess: () => {
@@ -74,7 +77,7 @@ const BlogEditor = () => {
     },
   });
 
-  const isLoading = createPostMutation.isLoading || updatePostMutation.isLoading;
+  const isLoading = createPostMutation.isPending || updatePostMutation.isPending || isPostLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -3,6 +3,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useLanguage } from "@/context/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardUserProfile } from "@/components/dashboard/DashboardUserProfile";
+import { StaticContentEditor } from "@/components/dashboard/StaticContentEditor";
 
 const DashboardSettings = () => {
   const { language } = useLanguage();
@@ -18,6 +19,9 @@ const DashboardSettings = () => {
         <TabsList className="mb-8">
           <TabsTrigger value="profile">
             {language === "en" ? "Profile" : "الملف الشخصي"}
+          </TabsTrigger>
+          <TabsTrigger value="content">
+            {language === "en" ? "Content" : "المحتوى"}
           </TabsTrigger>
           <TabsTrigger value="account">
             {language === "en" ? "Account" : "الحساب"}
@@ -36,6 +40,10 @@ const DashboardSettings = () => {
               {/* Additional profile information can go here in future */}
             </div>
           </div>
+        </TabsContent>
+        
+        <TabsContent value="content">
+          <StaticContentEditor />
         </TabsContent>
         
         <TabsContent value="account">

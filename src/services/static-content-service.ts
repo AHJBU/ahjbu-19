@@ -1,0 +1,212 @@
+
+// This service handles static content that can be edited from the dashboard
+// without requiring a database connection
+
+import { useState, useEffect } from 'react';
+
+// Define types for various static content sections
+export interface SiteSettings {
+  siteTitle: string;
+  siteTitleAr: string;
+  siteDescription: string; 
+  siteDescriptionAr: string;
+  logo: string;
+  contactEmail: string;
+  socialLinks: {
+    facebook?: string;
+    twitter?: string;
+    instagram?: string;
+    linkedin?: string;
+    github?: string;
+  };
+}
+
+export interface AboutContent {
+  title: string;
+  titleAr: string;
+  content: string;
+  contentAr: string;
+  image: string;
+  skills: string[];
+}
+
+export interface HomePageContent {
+  heroTitle: string;
+  heroTitleAr: string;
+  heroSubtitle: string;
+  heroSubtitleAr: string;
+  heroImage: string;
+  heroButtonText: string;
+  heroButtonTextAr: string;
+  heroButtonLink: string;
+}
+
+export interface FooterContent {
+  copyright: string;
+  copyrightAr: string;
+  links: Array<{ label: string; labelAr: string; url: string }>;
+}
+
+// Local Storage Keys
+const KEYS = {
+  SITE_SETTINGS: 'site_settings',
+  ABOUT_CONTENT: 'about_content',
+  HOME_PAGE_CONTENT: 'homepage_content',
+  FOOTER_CONTENT: 'footer_content'
+};
+
+// Default values
+const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  siteTitle: 'My Portfolio',
+  siteTitleAr: 'موقعي الشخصي',
+  siteDescription: 'Personal portfolio and blog',
+  siteDescriptionAr: 'موقع شخصي ومدونة',
+  logo: '/logo.svg',
+  contactEmail: 'contact@example.com',
+  socialLinks: {
+    facebook: 'https://facebook.com',
+    twitter: 'https://twitter.com',
+    instagram: 'https://instagram.com',
+    linkedin: 'https://linkedin.com',
+    github: 'https://github.com'
+  }
+};
+
+const DEFAULT_ABOUT_CONTENT: AboutContent = {
+  title: 'About Me',
+  titleAr: 'عني',
+  content: '<p>I am a passionate developer with experience in web technologies...</p>',
+  contentAr: '<p>أنا مطور متحمس ذو خبرة في تقنيات الويب...</p>',
+  image: '/placeholder.svg',
+  skills: ['React', 'TypeScript', 'Node.js', 'Firebase', 'Supabase']
+};
+
+const DEFAULT_HOME_PAGE_CONTENT: HomePageContent = {
+  heroTitle: 'Welcome to My Portfolio',
+  heroTitleAr: 'مرحبا بكم في موقعي',
+  heroSubtitle: 'Explore my projects and articles',
+  heroSubtitleAr: 'استكشف مشاريعي ومقالاتي',
+  heroImage: '/placeholder.svg',
+  heroButtonText: 'View Projects',
+  heroButtonTextAr: 'عرض المشاريع',
+  heroButtonLink: '/projects'
+};
+
+const DEFAULT_FOOTER_CONTENT: FooterContent = {
+  copyright: '© 2023 My Portfolio. All rights reserved.',
+  copyrightAr: '© 2023 موقعي الشخصي. جميع الحقوق محفوظة.',
+  links: [
+    { label: 'Privacy Policy', labelAr: 'سياسة الخصوصية', url: '/privacy' },
+    { label: 'Terms of Service', labelAr: 'شروط الخدمة', url: '/terms' },
+    { label: 'Contact', labelAr: 'اتصل بنا', url: '/contact' }
+  ]
+};
+
+// Generic function to get content
+function getContent<T>(key: string, defaultValue: T): T {
+  if (typeof window === 'undefined') return defaultValue;
+  
+  const stored = localStorage.getItem(key);
+  return stored ? JSON.parse(stored) : defaultValue;
+}
+
+// Generic function to save content
+function saveContent<T>(key: string, value: T): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, JSON.stringify(value));
+    // Dispatch an event to notify components that content has been updated
+    window.dispatchEvent(new Event('content-updated'));
+  }
+}
+
+// Hook for site settings
+export function useSiteSettings() {
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  
+  useEffect(() => {
+    setSettings(getContent<SiteSettings>(KEYS.SITE_SETTINGS, DEFAULT_SITE_SETTINGS));
+    
+    const handleUpdate = () => {
+      setSettings(getContent<SiteSettings>(KEYS.SITE_SETTINGS, DEFAULT_SITE_SETTINGS));
+    };
+    
+    window.addEventListener('content-updated', handleUpdate);
+    return () => window.removeEventListener('content-updated', handleUpdate);
+  }, []);
+  
+  const updateSettings = (newSettings: SiteSettings) => {
+    saveContent(KEYS.SITE_SETTINGS, newSettings);
+    setSettings(newSettings);
+  };
+  
+  return { settings, updateSettings };
+}
+
+// Hook for about content
+export function useAboutContent() {
+  const [aboutContent, setAboutContent] = useState<AboutContent>(DEFAULT_ABOUT_CONTENT);
+  
+  useEffect(() => {
+    setAboutContent(getContent<AboutContent>(KEYS.ABOUT_CONTENT, DEFAULT_ABOUT_CONTENT));
+    
+    const handleUpdate = () => {
+      setAboutContent(getContent<AboutContent>(KEYS.ABOUT_CONTENT, DEFAULT_ABOUT_CONTENT));
+    };
+    
+    window.addEventListener('content-updated', handleUpdate);
+    return () => window.removeEventListener('content-updated', handleUpdate);
+  }, []);
+  
+  const updateAboutContent = (newContent: AboutContent) => {
+    saveContent(KEYS.ABOUT_CONTENT, newContent);
+    setAboutContent(newContent);
+  };
+  
+  return { aboutContent, updateAboutContent };
+}
+
+// Hook for home page content
+export function useHomePageContent() {
+  const [homePageContent, setHomePageContent] = useState<HomePageContent>(DEFAULT_HOME_PAGE_CONTENT);
+  
+  useEffect(() => {
+    setHomePageContent(getContent<HomePageContent>(KEYS.HOME_PAGE_CONTENT, DEFAULT_HOME_PAGE_CONTENT));
+    
+    const handleUpdate = () => {
+      setHomePageContent(getContent<HomePageContent>(KEYS.HOME_PAGE_CONTENT, DEFAULT_HOME_PAGE_CONTENT));
+    };
+    
+    window.addEventListener('content-updated', handleUpdate);
+    return () => window.removeEventListener('content-updated', handleUpdate);
+  }, []);
+  
+  const updateHomePageContent = (newContent: HomePageContent) => {
+    saveContent(KEYS.HOME_PAGE_CONTENT, newContent);
+    setHomePageContent(newContent);
+  };
+  
+  return { homePageContent, updateHomePageContent };
+}
+
+// Hook for footer content
+export function useFooterContent() {
+  const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
+  
+  useEffect(() => {
+    setFooterContent(getContent<FooterContent>(KEYS.FOOTER_CONTENT, DEFAULT_FOOTER_CONTENT));
+    
+    const handleUpdate = () => {
+      setFooterContent(getContent<FooterContent>(KEYS.FOOTER_CONTENT, DEFAULT_FOOTER_CONTENT));
+    };
+    
+    window.addEventListener('content-updated', handleUpdate);
+    return () => window.removeEventListener('content-updated', handleUpdate);
+  }, []);
+  
+  const updateFooterContent = (newContent: FooterContent) => {
+    saveContent(KEYS.FOOTER_CONTENT, newContent);
+    setFooterContent(newContent);
+  };
+  
+  return { footerContent, updateFooterContent };
+}
