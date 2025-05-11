@@ -1,267 +1,235 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { useLanguage } from "@/context/LanguageContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Card, 
-  CardContent, 
-  CardFooter 
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
-} from "@/components/ui/tabs";
-import { Save, ChevronLeft, Tag, Github, ExternalLink } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { getProject, createProject, updateProject } from "@/services/supabase-service";
-import { ProjectType } from "@/data/projects";
-import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { useLanguage } from '@/context/LanguageContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import { useToast } from '@/components/ui/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Save, X, Plus, ChevronLeft, Globe, Github } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getProject, createProject, updateProject } from '@/services/supabase-service';
+import { ProjectType } from '@/data/projects';
 
 const ProjectEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { language } = useLanguage();
   const { toast } = useToast();
-  const [isEditing, setIsEditing] = useState(!!id);
+  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const emptyForm: Omit<ProjectType, "id"> = {
-    title: "",
-    titleAr: "",
-    description: "",
-    descriptionAr: "",
-    image: "",
-    tags: [],
-    link: "",
-    github: "",
-    featured: false,
-    technologies: [],
-    year: new Date().getFullYear().toString()
-  };
-  
-  const [formData, setFormData] = useState<Omit<ProjectType, "id">>(emptyForm);
-  const [tagInput, setTagInput] = useState("");
-  const [techInput, setTechInput] = useState("");
-  
-  // Find project data if editing
-  const { isLoading } = useQuery({
+  // State for form
+  const [title, setTitle] = useState('');
+  const [titleAr, setTitleAr] = useState('');
+  const [description, setDescription] = useState('');
+  const [descriptionAr, setDescriptionAr] = useState('');
+  const [image, setImage] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [link, setLink] = useState('');
+  const [github, setGithub] = useState('');
+  const [featured, setFeatured] = useState(false);
+  const [technologies, setTechnologies] = useState<string[]>([]);
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [tagInput, setTagInput] = useState('');
+  const [techInput, setTechInput] = useState('');
+
+  // Fetch project data if editing existing project
+  const { data: project, isLoading: isLoadingProject } = useQuery({
     queryKey: ['project', id],
     queryFn: () => getProject(id as string),
     enabled: !!id,
-    onSettled: (data, error) => {
+    onSuccess: (data) => {
       if (data) {
-        setFormData({
-          title: data.title,
-          titleAr: data.titleAr,
-          description: data.description,
-          descriptionAr: data.descriptionAr,
-          image: data.image,
-          tags: [...data.tags],
-          link: data.link || "",
-          github: data.github || "",
-          featured: data.featured,
-          technologies: [...data.technologies],
-          year: data.year
-        });
-      }
-      
-      if (error) {
-        console.error("Error fetching project:", error);
-        
-        toast({
-          title: language === "en" ? "Project not found" : "لم يتم العثور على المشروع",
-          description: language === "en" 
-            ? "The project you're trying to edit does not exist" 
-            : "المشروع الذي تحاول تعديله غير موجود",
-          variant: "destructive"
-        });
-        
-        navigate("/dashboard/projects");
+        setTitle(data.title);
+        setTitleAr(data.titleAr);
+        setDescription(data.description);
+        setDescriptionAr(data.descriptionAr);
+        setImage(data.image);
+        setTags(data.tags);
+        setLink(data.link || '');
+        setGithub(data.github || '');
+        setFeatured(data.featured);
+        setTechnologies(data.technologies);
+        setYear(data.year);
       }
     }
   });
-  
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: createProject,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast({
-        title: language === "en" ? "Project created" : "تم إنشاء المشروع",
-        description: language === "en" 
-          ? "Your project has been created successfully" 
-          : "تم إنشاء المشروع بنجاح",
+        title: language === 'en' ? 'Success!' : 'تم بنجاح!',
+        description: language === 'en' ? 'Project created successfully.' : 'تم إنشاء المشروع بنجاح.',
       });
-      navigate("/dashboard/projects");
+      navigate('/dashboard/projects');
     },
     onError: (error) => {
-      console.error("Error creating project:", error);
+      console.error('Error creating project:', error);
       toast({
-        title: language === "en" ? "Error" : "خطأ",
-        description: language === "en"
-          ? "Failed to create project. Please try again."
-          : "فشل في إنشاء المشروع. الرجاء المحاولة مرة أخرى.",
-        variant: "destructive"
+        title: language === 'en' ? 'Error' : 'خطأ',
+        description: language === 'en' ? 'Failed to create project.' : 'فشل في إنشاء المشروع.',
+        variant: 'destructive',
       });
     }
   });
-  
+
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string, data: Partial<ProjectType> }) => 
-      updateProject(id, data),
+    mutationFn: ({ id, project }: { id: string; project: Partial<ProjectType> }) => updateProject(id, project),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', id] });
+      
       toast({
-        title: language === "en" ? "Project updated" : "تم تحديث المشروع",
-        description: language === "en" 
-          ? "Your project has been updated successfully" 
-          : "تم تحديث المشروع بنجاح",
+        title: language === 'en' ? 'Success!' : 'تم بنجاح!',
+        description: language === 'en' ? 'Project updated successfully.' : 'تم تحديث المشروع بنجاح.',
       });
-      navigate("/dashboard/projects");
+      navigate('/dashboard/projects');
     },
     onError: (error) => {
-      console.error("Error updating project:", error);
+      console.error('Error updating project:', error);
       toast({
-        title: language === "en" ? "Error" : "خطأ",
-        description: language === "en"
-          ? "Failed to update project. Please try again."
-          : "فشل في تحديث المشروع. الرجاء المحاولة مرة أخرى.",
-        variant: "destructive"
+        title: language === 'en' ? 'Error' : 'خطأ',
+        description: language === 'en' ? 'Failed to update project.' : 'فشل في تحديث المشروع.',
+        variant: 'destructive',
       });
     }
   });
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: checked }));
-  };
-  
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData(prev => ({ ...prev, tags: [...prev.tags, tagInput.trim()] }));
-      setTagInput("");
-    }
-  };
-  
-  const removeTag = (tag: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(t => t !== tag)
-    }));
-  };
-  
-  const addTechnology = () => {
-    if (techInput.trim() && !formData.technologies.includes(techInput.trim())) {
-      setFormData(prev => ({ ...prev, technologies: [...prev.technologies, techInput.trim()] }));
-      setTechInput("");
-    }
-  };
-  
-  const removeTechnology = (tech: string) => {
-    setFormData(prev => ({
-      ...prev,
-      technologies: prev.technologies.filter(t => t !== tech)
-    }));
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (isEditing && id) {
-      updateMutation.mutate({ id, data: formData });
+    setIsSubmitting(true);
+
+    const projectData = {
+      title,
+      titleAr,
+      description,
+      descriptionAr,
+      image,
+      tags,
+      link,
+      github,
+      featured,
+      technologies,
+      year
+    };
+
+    if (id) {
+      updateMutation.mutate({ id, project: projectData });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(projectData as ProjectType);
     }
   };
 
-  const submitting = createMutation.isPending || updateMutation.isPending;
-  
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setTags(tags.filter((t) => t !== tag));
+  };
+
+  const handleAddTech = () => {
+    if (techInput.trim() && !technologies.includes(techInput.trim())) {
+      setTechnologies([...technologies, techInput.trim()]);
+      setTechInput('');
+    }
+  };
+
+  const handleRemoveTech = (tech: string) => {
+    setTechnologies(technologies.filter((t) => t !== tech));
+  };
+
+  if (isLoadingProject) {
+    return (
+      <DashboardLayout 
+        title={language === 'en' ? 'Loading Project...' : 'جاري تحميل المشروع...'}
+        breadcrumbs={[
+          { label: language === 'en' ? 'Projects' : 'المشاريع', href: '/dashboard/projects' },
+          { label: language === 'en' ? 'Edit Project' : 'تحرير مشروع', href: `/dashboard/projects/editor/${id}` },
+        ]}
+      >
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout
-      title={isEditing 
-        ? (language === "en" ? "Edit Project" : "تعديل المشروع")
-        : (language === "en" ? "Create New Project" : "إنشاء مشروع جديد")
-      }
+      title={id ? (language === 'en' ? 'Edit Project' : 'تحرير مشروع') : (language === 'en' ? 'New Project' : 'مشروع جديد')}
       breadcrumbs={[
-        { label: language === "en" ? "Projects" : "المشاريع", href: "/dashboard/projects" },
-        { 
-          label: isEditing 
-            ? (language === "en" ? "Edit Project" : "تعديل المشروع")
-            : (language === "en" ? "New Project" : "مشروع جديد"),
-          href: isEditing ? `/dashboard/projects/editor/${id}` : "/dashboard/projects/editor"
-        }
+        { label: language === 'en' ? 'Projects' : 'المشاريع', href: '/dashboard/projects' },
+        { label: id ? (language === 'en' ? 'Edit Project' : 'تحرير مشروع') : (language === 'en' ? 'New Project' : 'مشروع جديد'), href: id ? `/dashboard/projects/editor/${id}` : '/dashboard/projects/editor' },
       ]}
     >
       <div className="mb-6">
         <Button
           variant="outline"
-          onClick={() => navigate("/dashboard/projects")}
+          onClick={() => navigate('/dashboard/projects')}
+          className="flex items-center gap-2"
         >
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          {language === "en" ? "Back to Projects" : "العودة إلى المشاريع"}
+          <ChevronLeft className="h-4 w-4" />
+          {language === 'en' ? 'Back to Projects' : 'العودة إلى المشاريع'}
         </Button>
       </div>
-      
+
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main content */}
+          {/* Main content area */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Title and description in tabs */}
             <Card>
               <CardContent className="p-6">
-                <Tabs defaultValue="english">
-                  <TabsList className="mb-6">
+                <Tabs defaultValue="english" className="w-full">
+                  <TabsList className="mb-4">
                     <TabsTrigger value="english">English</TabsTrigger>
                     <TabsTrigger value="arabic">العربية</TabsTrigger>
                   </TabsList>
                   
-                  <TabsContent value="english" className="space-y-4">
+                  <TabsContent value="english" className="space-y-6">
                     <div className="space-y-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input 
-                        id="title" 
-                        name="title" 
-                        value={formData.title}
-                        onChange={handleInputChange}
-                        placeholder="Project title"
-                        required
+                      <Label htmlFor="title">{language === 'en' ? 'Title' : 'العنوان'}</Label>
+                      <Input
+                        id="title"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder={language === 'en' ? 'Project title' : 'عنوان المشروع'}
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        placeholder="Brief description of the project"
-                        rows={3}
+                      <Label htmlFor="description">{language === 'en' ? 'Description' : 'الوصف'}</Label>
+                      <RichTextEditor
+                        value={description}
+                        onChange={setDescription}
+                        height={300}
+                        placeholder={language === 'en' ? 'Project description' : 'وصف المشروع'}
                       />
                     </div>
                   </TabsContent>
                   
-                  <TabsContent value="arabic" className="space-y-4">
+                  <TabsContent value="arabic" className="space-y-6">
                     <div className="space-y-2">
                       <Label htmlFor="titleAr">العنوان</Label>
-                      <Input 
-                        id="titleAr" 
-                        name="titleAr" 
-                        value={formData.titleAr}
-                        onChange={handleInputChange}
+                      <Input
+                        id="titleAr"
+                        value={titleAr}
+                        onChange={(e) => setTitleAr(e.target.value)}
                         placeholder="عنوان المشروع"
                         dir="rtl"
                       />
@@ -269,13 +237,11 @@ const ProjectEditor = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="descriptionAr">الوصف</Label>
-                      <Textarea
-                        id="descriptionAr"
-                        name="descriptionAr"
-                        value={formData.descriptionAr}
-                        onChange={handleInputChange}
-                        placeholder="وصف موجز للمشروع"
-                        rows={3}
+                      <RichTextEditor
+                        value={descriptionAr}
+                        onChange={setDescriptionAr}
+                        height={300}
+                        placeholder="وصف المشروع"
                         dir="rtl"
                       />
                     </div>
@@ -285,158 +251,156 @@ const ProjectEditor = () => {
             </Card>
           </div>
           
-          {/* Sidebar */}
+          {/* Sidebar with metadata */}
           <div className="space-y-6">
             <Card>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-6 space-y-6">
+                {/* Image URL */}
                 <div className="space-y-2">
-                  <Label htmlFor="image">Image URL</Label>
-                  <Input 
-                    id="image" 
-                    name="image" 
-                    value={formData.image}
-                    onChange={handleInputChange}
-                    placeholder="Image URL"
+                  <Label htmlFor="image">{language === 'en' ? 'Project Image URL' : 'رابط صورة المشروع'}</Label>
+                  <Input
+                    id="image"
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                    placeholder={language === 'en' ? 'https://example.com/image.jpg' : 'https://example.com/image.jpg'}
                   />
                 </div>
                 
+                {/* External Link */}
                 <div className="space-y-2">
-                  <Label htmlFor="year">Year</Label>
-                  <Input 
-                    id="year" 
-                    name="year" 
-                    value={formData.year}
-                    onChange={handleInputChange}
-                    placeholder="Year"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="link">Link</Label>
-                  <Input 
-                    id="link" 
-                    name="link" 
-                    value={formData.link}
-                    onChange={handleInputChange}
-                    placeholder="Project link"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="github">GitHub</Label>
-                  <Input 
-                    id="github" 
-                    name="github" 
-                    value={formData.github}
-                    onChange={handleInputChange}
-                    placeholder="GitHub link"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="featured">Featured</Label>
-                  <Input 
-                    id="featured" 
-                    name="featured" 
-                    type="checkbox"
-                    checked={formData.featured}
-                    onChange={handleCheckboxChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <Tag className="h-4 w-4 mr-2" />
-                    <Label htmlFor="tags">Tags</Label>
+                  <Label htmlFor="link">{language === 'en' ? 'Project Link' : 'رابط المشروع'}</Label>
+                  <div className="flex items-center space-x-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="link"
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      placeholder={language === 'en' ? 'https://example.com' : 'https://example.com'}
+                    />
                   </div>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="tagInput" 
+                </div>
+                
+                {/* GitHub Link */}
+                <div className="space-y-2">
+                  <Label htmlFor="github">{language === 'en' ? 'GitHub Repository' : 'مستودع GitHub'}</Label>
+                  <div className="flex items-center space-x-2">
+                    <Github className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="github"
+                      value={github}
+                      onChange={(e) => setGithub(e.target.value)}
+                      placeholder={language === 'en' ? 'https://github.com/username/repo' : 'https://github.com/username/repo'}
+                    />
+                  </div>
+                </div>
+                
+                {/* Year */}
+                <div className="space-y-2">
+                  <Label htmlFor="year">{language === 'en' ? 'Year' : 'السنة'}</Label>
+                  <Input
+                    id="year"
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                    placeholder={language === 'en' ? '2023' : '٢٠٢٣'}
+                  />
+                </div>
+                
+                {/* Featured */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="featured" 
+                    checked={featured}
+                    onCheckedChange={(checked) => setFeatured(checked === true)}
+                  />
+                  <Label htmlFor="featured" className="cursor-pointer">
+                    {language === 'en' ? 'Featured project' : 'مشروع مميز'}
+                  </Label>
+                </div>
+                
+                {/* Tags */}
+                <div className="space-y-2">
+                  <Label htmlFor="tags">{language === 'en' ? 'Tags' : 'الوسوم'}</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="tagInput"
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
-                      placeholder="Add a tag"
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                      placeholder={language === 'en' ? 'Add tag' : 'إضافة وسم'}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                     />
-                    <Button 
-                      type="button" 
-                      size="sm" 
-                      onClick={addTag}
-                    >
-                      Add
+                    <Button type="button" size="sm" onClick={handleAddTag}>
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.tags.map((tag) => (
-                      <Badge 
-                        key={tag} 
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() => removeTag(tag)}
-                      >
-                        {tag} &times;
+                    {tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                        {tag}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
+                          onClick={() => handleRemoveTag(tag)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </Badge>
                     ))}
                   </div>
                 </div>
                 
+                {/* Technologies */}
                 <div className="space-y-2">
-                  <div className="flex items-center">
-                    <Tag className="h-4 w-4 mr-2" />
-                    <Label htmlFor="technologies">Technologies</Label>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="techInput" 
+                  <Label htmlFor="technologies">{language === 'en' ? 'Technologies' : 'التقنيات'}</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="techInput"
                       value={techInput}
                       onChange={(e) => setTechInput(e.target.value)}
-                      placeholder="Add a technology"
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTechnology())}
+                      placeholder={language === 'en' ? 'Add technology' : 'إضافة تقنية'}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTech())}
                     />
-                    <Button 
-                      type="button" 
-                      size="sm" 
-                      onClick={addTechnology}
-                    >
-                      Add
+                    <Button type="button" size="sm" onClick={handleAddTech}>
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.technologies.map((tech) => (
-                      <Badge 
-                        key={tech} 
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() => removeTechnology(tech)}
-                      >
-                        {tech} &times;
+                    {technologies.map((tech) => (
+                      <Badge key={tech} variant="outline" className="flex items-center gap-1">
+                        {tech}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
+                          onClick={() => handleRemoveTech(tech)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </Badge>
                     ))}
                   </div>
                 </div>
               </CardContent>
-              
-              <CardFooter className="flex justify-between p-6 border-t">
-                <Button 
-                  variant="outline" 
+              <CardFooter className="px-6 py-4 border-t flex justify-between">
+                <Button
                   type="button"
-                  onClick={() => navigate("/dashboard/projects")}
-                  disabled={submitting}
+                  variant="outline"
+                  onClick={() => navigate('/dashboard/projects')}
                 >
-                  {language === "en" ? "Cancel" : "إلغاء"}
+                  {language === 'en' ? 'Cancel' : 'إلغاء'}
                 </Button>
-                
-                <Button type="submit" disabled={submitting}>
-                  {submitting ? (
-                    <span className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      {language === "en" ? "Saving..." : "جار الحفظ..."}
-                    </span>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full"></div>
+                      {language === 'en' ? 'Saving...' : 'جاري الحفظ...'}
+                    </>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      {language === "en" ? "Save Project" : "حفظ المشروع"}
+                      {language === 'en' ? 'Save Project' : 'حفظ المشروع'}
                     </>
                   )}
                 </Button>
