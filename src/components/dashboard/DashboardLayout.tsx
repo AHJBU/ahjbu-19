@@ -1,4 +1,3 @@
-
 import { useState, ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/context/LanguageContext";
@@ -13,7 +12,9 @@ import {
   X,
   ChevronRight,
   Home,
-  Image
+  Image,
+  BookOpen,
+  File
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,16 @@ export function DashboardLayout({ children, title, breadcrumbs = [] }: Dashboard
       icon: <FolderKanban className="h-5 w-5" />,
       label: language === "en" ? "Projects" : "المشاريع",
       href: "/dashboard/projects",
+    },
+    {
+      icon: <BookOpen className="h-5 w-5" />,
+      label: language === "en" ? "Courses" : "الدورات",
+      href: "/dashboard/courses",
+    },
+    {
+      icon: <File className="h-5 w-5" />,
+      label: language === "en" ? "Files" : "الملفات",
+      href: "/dashboard/files",
     },
     {
       icon: <Image className="h-5 w-5" />,

@@ -1,257 +1,202 @@
+
 import { useState, useEffect } from "react";
-import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import { MediaUpload } from "./MediaUpload";
+import { Search, Trash2, Download, Check } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { getMediaItems, deleteMediaItem, MediaItem } from "@/services/mysql-media-service";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
-import { Search, Trash, FileImage, FileVideo, File, Download } from "lucide-react";
-import { MediaItem, getMediaFromFolder, deleteFile } from "@/services/mysql-file-service"; 
-import { FileUploader } from "../files/FileUploader";
 
 interface MediaCenterProps {
   onSelect?: (url: string) => void;
+  mediaType?: string;
 }
 
-export function MediaCenter({ onSelect }: MediaCenterProps) {
+export function MediaCenter({ onSelect, mediaType = "all" }: MediaCenterProps) {
   const { language } = useLanguage();
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("images");
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const queryClient = useQueryClient();
 
-  // Function to load media from MySQL
-  const loadMedia = async () => {
-    setIsLoading(true);
-    try {
-      // Define folders to scan based on active tab
-      let folderPath = "";
-      if (activeTab === "images") {
-        folderPath = "images";
-      } else if (activeTab === "videos") {
-        folderPath = "videos";
-      } else if (activeTab === "files") {
-        folderPath = "files";
-      }
+  const { data: mediaItems = [], isLoading } = useQuery({
+    queryKey: ['mediaItems', mediaType],
+    queryFn: () => getMediaItems(mediaType !== "all" ? mediaType : undefined),
+  });
 
-      const mediaData = await getMediaFromFolder(folderPath);
-      setMediaItems(mediaData);
-    } catch (error) {
-      console.error("Error loading media:", error);
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteMediaItem(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mediaItems'] });
       toast({
-        title: language === "en" ? "Error loading media" : "خطأ في تحميل الوسائط",
-        description: String(error),
-        variant: "destructive",
+        title: language === "en" ? "Media deleted" : "تم حذف الوسائط",
+        description: language === "en" ? "The media has been deleted successfully." : "تم حذف الوسائط بنجاح.",
       });
-    } finally {
-      setIsLoading(false);
+    },
+  });
+
+  const handleDelete = (id: number) => {
+    if (confirm(language === "en" ? "Are you sure you want to delete this media?" : "هل أنت متأكد من أنك تريد حذف هذه الوسائط؟")) {
+      deleteMutation.mutate(id);
     }
   };
 
-  useEffect(() => {
-    loadMedia();
-  }, [activeTab]);
-
-  const handleUploadComplete = (url: string, path: string, contentType: string, size: number) => {
-    // Add the new file to the list
-    const newItem: MediaItem = {
-      name: path.split('/').pop() || 'unknown',
-      url: url,
-      fullPath: path,
-      contentType: contentType,
-      size: size,
-      timeCreated: new Date().toISOString()
-    };
-    
-    setMediaItems(prev => [newItem, ...prev]);
-  };
-
-  const handleDelete = async (item: MediaItem) => {
-    try {
-      await deleteFile(item.fullPath);
-      
-      toast({
-        title: language === "en" ? "File deleted" : "تم حذف الملف",
-        description: language === "en" ? "The file has been removed" : "تم إزالة الملف",
-      });
-      
-      loadMedia(); // Refresh the media list
-    } catch (error) {
-      console.error("Error deleting file:", error);
-      toast({
-        title: language === "en" ? "Error deleting file" : "خطأ في حذف الملف",
-        description: String(error),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSelect = (item: MediaItem) => {
-    setSelectedItem(item);
+  const handleSelect = (url: string) => {
     if (onSelect) {
-      onSelect(item.url);
+      onSelect(url);
     }
   };
 
-  const filteredMedia = mediaItems.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter media by search term
+  const filteredMedia = mediaItems.filter((item) => 
+    item.original_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getMediaType = (contentType: string) => {
-    if (contentType.startsWith("image/")) return "image";
-    if (contentType.startsWith("video/")) return "video";
-    return "file";
-  };
-
-  const getMediaIcon = (contentType: string) => {
-    const type = getMediaType(contentType);
-    
-    if (type === "image") return <FileImage className="h-6 w-6 text-blue-500" />;
-    if (type === "video") return <FileVideo className="h-6 w-6 text-purple-500" />;
-    return <File className="h-6 w-6 text-gray-500" />;
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  // Group by mime type
+  const images = filteredMedia.filter(item => item.mime_type.startsWith('image/'));
+  const videos = filteredMedia.filter(item => item.mime_type.startsWith('video/'));
+  const documents = filteredMedia.filter(item => item.mime_type.startsWith('application/') || item.mime_type.startsWith('text/'));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row justify-between gap-4">
-        <div className="lg:w-1/3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={language === "en" ? "Search media..." : "البحث في الوسائط..."}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4 justify-between">
+        <div className="relative w-full md:w-64">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="ps-10"
+            placeholder={language === "en" ? "Search media..." : "البحث عن وسائط..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
+        <MediaUpload onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ['mediaItems'] })} />
       </div>
 
-      <Tabs defaultValue="images" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 mb-6">
+      <Tabs defaultValue="all">
+        <TabsList>
+          <TabsTrigger value="all">
+            {language === "en" ? "All Media" : "كل الوسائط"}
+          </TabsTrigger>
           <TabsTrigger value="images">
             {language === "en" ? "Images" : "الصور"}
           </TabsTrigger>
           <TabsTrigger value="videos">
             {language === "en" ? "Videos" : "الفيديوهات"}
           </TabsTrigger>
-          <TabsTrigger value="files">
-            {language === "en" ? "Files" : "الملفات"}
+          <TabsTrigger value="documents">
+            {language === "en" ? "Documents" : "المستندات"}
           </TabsTrigger>
         </TabsList>
         
-        {["images", "videos", "files"].map((tab) => (
-          <TabsContent key={tab} value={tab} className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium mb-4">
-                {language === "en" ? "Upload New" : "رفع جديد"}
-              </h3>
-              <FileUploader
-                folder={tab}
-                onUploadComplete={(url, path, contentType, size) => {
-                  handleUploadComplete(url, path, contentType, size);
-                }}
-                accept={tab === "images" ? "image/*" : tab === "videos" ? "video/*" : "*/*"}
-                maxSizeMB={tab === "videos" ? 50 : 10}
-              />
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-medium mb-4">
-                {language === "en" ? `Your ${tab}` : `${tab === "images" ? "صورك" : tab === "videos" ? "فيديوهاتك" : "ملفاتك"}`}
-              </h3>
-              
-              {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <Card key={i} className="overflow-hidden">
-                      <div className="aspect-video bg-muted animate-pulse" />
-                      <CardContent className="p-4">
-                        <div className="h-4 bg-muted rounded animate-pulse" />
-                        <div className="h-4 w-1/2 bg-muted rounded animate-pulse mt-2" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : filteredMedia.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {filteredMedia.map((item) => (
-                    <Card 
-                      key={item.fullPath}
-                      className={`overflow-hidden cursor-pointer hover:border-primary transition-all ${selectedItem?.fullPath === item.fullPath ? 'border-primary ring-1 ring-primary' : ''}`}
-                      onClick={() => handleSelect(item)}
-                    >
-                      <div className="aspect-video overflow-hidden bg-muted flex items-center justify-center">
-                        {getMediaType(item.contentType) === "image" ? (
-                          <img 
-                            src={item.url} 
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center p-4">
-                            {getMediaIcon(item.contentType)}
-                            <span className="mt-2 text-xs text-muted-foreground">{item.contentType}</span>
-                          </div>
-                        )}
-                      </div>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div className="truncate flex-1">
-                            <p className="font-medium text-sm truncate">{item.name}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatFileSize(item.size)} • {new Date(item.timeCreated).toLocaleDateString()}
-                            </p>
-                          </div>
-                          
-                          <div className="flex gap-2 ml-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(item.url, '_blank');
-                              }}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-red-500 hover:text-red-600 hover:bg-red-100/20"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(item);
-                              }}
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-10 border rounded-lg">
-                  <p className="text-muted-foreground">
-                    {language === "en" 
-                      ? `No ${tab} found. Upload some to get started!` 
-                      : `لم يتم العثور على ${tab === "images" ? "صور" : tab === "videos" ? "فيديوهات" : "ملفات"}. قم برفع البعض للبدء!`}
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        ))}
+        <TabsContent value="all" className="mt-4">
+          {renderMediaGrid(filteredMedia, handleDelete, handleSelect, language)}
+        </TabsContent>
+        
+        <TabsContent value="images" className="mt-4">
+          {renderMediaGrid(images, handleDelete, handleSelect, language)}
+        </TabsContent>
+        
+        <TabsContent value="videos" className="mt-4">
+          {renderMediaGrid(videos, handleDelete, handleSelect, language)}
+        </TabsContent>
+        
+        <TabsContent value="documents" className="mt-4">
+          {renderMediaGrid(documents, handleDelete, handleSelect, language)}
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function renderMediaGrid(
+  items: MediaItem[],
+  onDelete: (id: number) => void,
+  onSelect: (url: string) => void,
+  language: string
+) {
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">
+          {language === "en" ? "No media found" : "لم يتم العثور على وسائط"}
+        </p>
+      </div>
+    );
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getPreviewContent = (item: MediaItem) => {
+    if (item.mime_type.startsWith('image/')) {
+      return <img src={item.url} alt={item.original_name} className="w-full h-full object-cover" />;
+    } else if (item.mime_type.startsWith('video/')) {
+      return (
+        <div className="flex items-center justify-center bg-black h-full">
+          <video src={item.url} className="max-h-full" />
+        </div>
+      );
+    } else {
+      // Document or other file type
+      const extension = item.original_name.split('.').pop()?.toUpperCase() || '';
+      return (
+        <div className="flex items-center justify-center bg-gray-100 h-full">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-gray-400">{extension}</div>
+          </div>
+        </div>
+      );
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {items.map((item) => (
+        <div
+          key={item.id}
+          className="group relative border rounded-md overflow-hidden"
+        >
+          <div className="aspect-square overflow-hidden bg-muted">
+            {getPreviewContent(item)}
+          </div>
+          
+          <div className="p-2 text-sm truncate">
+            {item.original_name}
+            <div className="text-xs text-muted-foreground">
+              {formatFileSize(item.size)}
+            </div>
+          </div>
+
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-white text-black hover:bg-white/80"
+                onClick={() => onSelect(item.url)}
+              >
+                <Check className="h-4 w-4" />
+                {language === "en" ? "Select" : "اختيار"}
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-white text-black hover:bg-white/80"
+                onClick={() => onDelete(item.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

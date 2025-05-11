@@ -1,232 +1,159 @@
 
-import { useState, useRef, ChangeEvent } from "react";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL, UploadTask } from "firebase/storage";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { toast } from "@/components/ui/use-toast";
+import { Upload, X } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { Upload, X, File, FileImage, FileVideo } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface MediaUploadProps {
-  folder: string;
-  onUploadComplete: (url: string) => void;
-  accept?: string;
-  maxSizeMB?: number;
+  onUploadComplete?: () => void;
 }
 
-export function MediaUpload({
-  folder,
-  onUploadComplete,
-  accept = "image/*",
-  maxSizeMB = 5
-}: MediaUploadProps) {
+export function MediaUpload({ onUploadComplete }: MediaUploadProps) {
   const { language } = useLanguage();
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      
-      // Check file size
-      const maxSizeBytes = maxSizeMB * 1024 * 1024;
-      if (selectedFile.size > maxSizeBytes) {
-        toast({
-          title: language === "en" ? "File too large" : "الملف كبير جدًا",
-          description: language === "en" 
-            ? `Maximum file size is ${maxSizeMB}MB` 
-            : `الحد الأقصى لحجم الملف هو ${maxSizeMB} ميجابايت`,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      setFile(selectedFile);
-      
-      // Create preview for images
-      if (selectedFile.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPreview(reader.result as string);
-        };
-        reader.readAsDataURL(selectedFile);
-      } else {
-        // For non-image files, just show the file name
-        setPreview(null);
-      }
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleClearFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   const handleUpload = async () => {
-    if (!file) return;
-    
-    setUploading(true);
+    if (!selectedFile) return;
+
+    setIsUploading(true);
     setProgress(0);
-    
+
+    // Create form data
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
     try {
-      // Create a unique file name
-      const timestamp = new Date().getTime();
-      const fileExtension = file.name.split('.').pop() || '';
-      const fileName = `${timestamp}-${file.name}`;
-      const storageRef = ref(storage, `${folder}/${fileName}`);
+      // Upload to server
+      const xhr = new XMLHttpRequest();
       
-      const uploadTask: UploadTask = uploadBytesResumable(storageRef, file);
+      xhr.open("POST", "/api/upload");
       
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          // Update progress
-          const progressValue = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setProgress(progressValue);
-        },
-        (error) => {
-          // Handle error
-          console.error("Upload error:", error);
-          toast({
-            title: language === "en" ? "Upload failed" : "فشل الرفع",
-            description: error.message,
-            variant: "destructive",
-          });
-          setUploading(false);
-        },
-        async () => {
-          // Upload completed successfully
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          
-          toast({
-            title: language === "en" ? "Upload successful" : "تم الرفع بنجاح",
-            description: language === "en" ? "Your file has been uploaded" : "تم رفع الملف الخاص بك",
-          });
-          
-          setUploading(false);
-          setFile(null);
-          setPreview(null);
-          onUploadComplete(downloadUrl);
-          
-          // Clear the file input
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
+      // Track upload progress
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          setProgress(percentComplete);
         }
-      );
-    } catch (error) {
-      console.error("Error starting upload:", error);
-      setUploading(false);
-      toast({
-        title: language === "en" ? "Error" : "خطأ",
-        description: String(error),
-        variant: "destructive",
       });
+
+      // Handle completion
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const response = JSON.parse(xhr.responseText);
+          toast({
+            title: language === "en" ? "Upload Complete" : "تم الرفع",
+            description: language === "en" 
+              ? `${selectedFile.name} has been uploaded successfully.`
+              : `تم رفع ${selectedFile.name} بنجاح.`,
+          });
+          setSelectedFile(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+          if (onUploadComplete) {
+            onUploadComplete();
+          }
+        } else {
+          handleUploadError();
+        }
+        setIsUploading(false);
+      };
+
+      // Handle errors
+      xhr.onerror = () => {
+        handleUploadError();
+        setIsUploading(false);
+      };
+
+      // Send the request
+      xhr.send(formData);
+    } catch (error) {
+      handleUploadError();
+      setIsUploading(false);
     }
   };
 
-  const handleCancel = () => {
-    setFile(null);
-    setPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const getFileIcon = () => {
-    if (!file) return <File className="h-12 w-12 text-muted-foreground" />;
-    
-    if (file.type.startsWith('image/')) {
-      return <FileImage className="h-12 w-12 text-blue-500" />;
-    } else if (file.type.startsWith('video/')) {
-      return <FileVideo className="h-12 w-12 text-purple-500" />;
-    } else {
-      return <File className="h-12 w-12 text-gray-500" />;
-    }
+  const handleUploadError = () => {
+    toast({
+      title: language === "en" ? "Upload Failed" : "فشل الرفع",
+      description: language === "en" 
+        ? "There was an error uploading your file. Please try again."
+        : "حدث خطأ أثناء رفع الملف. يرجى المحاولة مرة أخرى.",
+      variant: "destructive",
+    });
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2">
-        {!file && (
-          <div className="flex items-center justify-center border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 cursor-pointer hover:border-primary/50 transition-all"
-               onClick={() => fileInputRef.current?.click()}>
-            <div className="text-center">
-              <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
-              <p className="text-sm font-medium">
-                {language === "en" ? "Click to upload or drag & drop" : "انقر للرفع أو اسحب وأفلت"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {language === "en" 
-                  ? `${accept.replace('*', '')} (Max ${maxSizeMB}MB)` 
-                  : `${accept.replace('*', '')} (الحد الأقصى ${maxSizeMB} ميجابايت)`}
-              </p>
-            </div>
-          </div>
-        )}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          {language === "en" ? "Select File" : "اختر ملف"}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+            disabled={isUploading}
+          />
+        </Button>
         
-        <Input
-          type="file"
-          ref={fileInputRef}
-          accept={accept}
-          onChange={handleFileChange}
-          className="hidden"
-          disabled={uploading}
-        />
-        
-        {file && (
-          <div className="border rounded-md p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {getFileIcon()}
-                <div>
-                  <p className="text-sm font-medium truncate max-w-[200px]">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              </div>
-              
-              <Button 
-                variant="ghost"
-                size="icon"
-                onClick={handleCancel}
-                disabled={uploading}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {preview && (
-              <div className="relative aspect-video w-full max-h-[200px] overflow-hidden rounded border">
-                <img 
-                  src={preview}
-                  alt="Preview"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            )}
-            
-            {uploading && (
-              <div className="space-y-2">
-                <Progress value={progress} className="h-2" />
-                <p className="text-xs text-center">{Math.round(progress)}%</p>
-              </div>
-            )}
-            
-            <div className="flex justify-end">
-              <Button
-                onClick={handleUpload}
-                disabled={uploading}
-              >
-                {uploading 
-                  ? (language === "en" ? "Uploading..." : "جاري الرفع...") 
-                  : (language === "en" ? "Upload" : "رفع")}
-              </Button>
-            </div>
-          </div>
+        {selectedFile && !isUploading && (
+          <Button 
+            variant="default"
+            onClick={handleUpload}
+          >
+            {language === "en" ? "Upload" : "رفع"}
+          </Button>
         )}
       </div>
+
+      {selectedFile && (
+        <div className="flex items-center gap-2 text-sm bg-muted p-2 rounded">
+          <div className="flex-1 truncate">{selectedFile.name}</div>
+          {!isUploading && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleClearFile}
+              className="h-6 w-6 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {isUploading && (
+        <div className="space-y-2">
+          <Progress value={progress} />
+          <div className="text-xs text-right text-muted-foreground">
+            {progress}%
+          </div>
+        </div>
+      )}
     </div>
   );
 }

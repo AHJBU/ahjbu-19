@@ -9,9 +9,10 @@ import { Image as ImageIcon } from "lucide-react";
 export interface MediaSelectorProps {
   value?: string;
   onValueChange: (value: string) => void;
+  type?: string;
 }
 
-export function MediaSelector({ value, onValueChange }: MediaSelectorProps) {
+export function MediaSelector({ value, onValueChange, type = "image" }: MediaSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value || "");
 
@@ -54,7 +55,7 @@ export function MediaSelector({ value, onValueChange }: MediaSelectorProps) {
                 <DialogTitle>Select Media</DialogTitle>
               </DialogHeader>
               <div className="h-[70vh] overflow-auto">
-                <MediaCenter onSelect={handleSelect} />
+                <MediaCenter onSelect={handleSelect} mediaType={type} />
               </div>
             </DialogContent>
           </Dialog>
