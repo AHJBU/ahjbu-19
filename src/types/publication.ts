@@ -16,6 +16,9 @@ export interface Publication {
   relatedPostId?: string;
   image?: string;
   featured: boolean;
+  archived: boolean;
   created_at?: string;
   updated_at?: string;
+  tags?: string[];
+  draft?: boolean;
 }

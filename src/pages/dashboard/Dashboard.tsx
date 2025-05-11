@@ -4,7 +4,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, FileText, FolderKanban, BookOpenText, BookOpen } from "lucide-react";
 import { DatabaseStats } from "@/components/dashboard/DatabaseStats";
 import { RecentPostsList } from "@/components/dashboard/RecentPostsList";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
@@ -39,22 +39,29 @@ const Dashboard = () => {
         <CardContent className="flex flex-wrap gap-4">
           <Button asChild>
             <Link to="/dashboard/blog/editor">
-              <Plus className="h-4 w-4 mr-2" />
+              <FileText className="h-4 w-4 mr-2" />
               {language === "en" ? "New Blog Post" : "منشور مدونة جديد"}
             </Link>
           </Button>
           
           <Button asChild variant="outline">
             <Link to="/dashboard/projects/editor">
-              <Plus className="h-4 w-4 mr-2" />
+              <FolderKanban className="h-4 w-4 mr-2" />
               {language === "en" ? "New Project" : "مشروع جديد"}
             </Link>
           </Button>
           
           <Button asChild variant="secondary">
             <Link to="/dashboard/courses/editor">
-              <Plus className="h-4 w-4 mr-2" />
+              <BookOpen className="h-4 w-4 mr-2" />
               {language === "en" ? "New Course" : "دورة جديدة"}
+            </Link>
+          </Button>
+          
+          <Button asChild variant="outline">
+            <Link to="/dashboard/publications/editor">
+              <BookOpenText className="h-4 w-4 mr-2" />
+              {language === "en" ? "New Publication" : "منشور جديد"}
             </Link>
           </Button>
           

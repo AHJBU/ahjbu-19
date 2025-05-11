@@ -14,7 +14,9 @@ import {
   Home,
   Image,
   BookOpen,
-  File
+  File,
+  Award,
+  BookOpenText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +47,16 @@ export function DashboardLayout({ children, title, breadcrumbs = [] }: Dashboard
       icon: <FolderKanban className="h-5 w-5" />,
       label: language === "en" ? "Projects" : "المشاريع",
       href: "/dashboard/projects",
+    },
+    {
+      icon: <Award className="h-5 w-5" />,
+      label: language === "en" ? "Achievements" : "الإنجازات",
+      href: "/dashboard/achievements",
+    },
+    {
+      icon: <BookOpenText className="h-5 w-5" />,
+      label: language === "en" ? "Publications" : "المنشورات",
+      href: "/dashboard/publications",
     },
     {
       icon: <BookOpen className="h-5 w-5" />,
