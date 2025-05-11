@@ -3,25 +3,65 @@ import { useParams, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useLanguage } from "@/context/LanguageContext";
-import { posts } from "@/data/posts";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getPost } from "@/services/supabase-service";
+import "react-quill/dist/quill.snow.css";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
   const { language } = useLanguage();
   
-  const post = posts.find(p => p.id === id);
+  const { data: post, isLoading, isError } = useQuery({
+    queryKey: ['post', id],
+    queryFn: () => getPost(id as string),
+    enabled: !!id,
+  });
 
-  // If post not found, redirect to 404
-  useEffect(() => {
-    if (!post) {
-      window.location.href = "/404";
-    }
-  }, [post]);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow pt-16">
+          <div className="container mx-auto px-4 py-12">
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
-  if (!post) return null;
+  if (isError || !post) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow pt-16">
+          <div className="container mx-auto px-4 py-12 text-center">
+            <h1 className="text-2xl font-bold mb-4">
+              {language === "en" ? "Post not found" : "لم يتم العثور على المنشور"}
+            </h1>
+            <p className="mb-8">
+              {language === "en" 
+                ? "The post you're looking for doesn't exist or has been removed." 
+                : "المنشور الذي تبحث عنه غير موجود أو تم إزالته."
+              }
+            </p>
+            <Button asChild>
+              <Link to="/blog">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {language === "en" ? "Back to Blog" : "العودة إلى المدونة"}
+              </Link>
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -69,12 +109,14 @@ const BlogPost = () => {
 
             {/* Content */}
             <div className="max-w-3xl mx-auto prose dark:prose-invert prose-lg">
-              <div>
-                {language === "en" ? (
-                  <div dangerouslySetInnerHTML={{ __html: post.content }} />
-                ) : (
-                  <div dangerouslySetInnerHTML={{ __html: post.contentAr }} />
-                )}
+              <div className="ql-snow">
+                <div className="ql-editor">
+                  {language === "en" ? (
+                    <div dangerouslySetInnerHTML={{ __html: post.content }} />
+                  ) : (
+                    <div dir="rtl" dangerouslySetInnerHTML={{ __html: post.contentAr }} />
+                  )}
+                </div>
               </div>
               
               {/* Tags */}

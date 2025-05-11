@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { 
   Card, 
   CardContent, 
@@ -19,31 +20,23 @@ import {
   TabsList,
   TabsTrigger
 } from "@/components/ui/tabs";
-import { posts } from "@/data/posts";
+import { supabase } from "@/lib/supabase";
 import { Save, ChevronLeft, Calendar, Tag } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-
-interface FormData {
-  title: string;
-  titleAr: string;
-  excerpt: string;
-  excerptAr: string;
-  content: string;
-  contentAr: string;
-  image: string;
-  date: string;
-  author: string;
-  tags: string[];
-}
+import { getPost, createPost, updatePost } from "@/services/supabase-service";
+import { PostType } from "@/data/posts";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 
 const BlogEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { language } = useLanguage();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(!!id);
+  const [tagInput, setTagInput] = useState("");
   
-  const emptyForm: FormData = {
+  const emptyForm: Omit<PostType, "id"> = {
     title: "",
     titleAr: "",
     excerpt: "",
@@ -51,48 +44,55 @@ const BlogEditor = () => {
     content: "",
     contentAr: "",
     image: "",
-    date: new Date().toISOString().split("T")[0],
+    date: new Date().toISOString(),
     author: "",
-    tags: []
+    tags: [],
   };
   
-  const [formData, setFormData] = useState<FormData>(emptyForm);
-  const [tagInput, setTagInput] = useState("");
+  const [formData, setFormData] = useState<Omit<PostType, "id">>(emptyForm);
   
-  // Find post data if editing
-  useEffect(() => {
-    if (id) {
-      const post = posts.find(p => p.id === id);
-      if (post) {
-        setFormData({
-          title: post.title,
-          titleAr: post.titleAr,
-          excerpt: post.excerpt,
-          excerptAr: post.excerptAr,
-          content: post.content,
-          contentAr: post.contentAr,
-          image: post.image,
-          date: post.date,
-          author: post.author,
-          tags: [...post.tags]
-        });
-      } else {
-        // Post not found
-        navigate("/dashboard/blog");
-        toast({
-          title: language === "en" ? "Post not found" : "لم يتم العثور على المنشور",
-          description: language === "en" 
-            ? "The post you're trying to edit does not exist" 
-            : "المنشور الذي تحاول تعديله غير موجود",
-          variant: "destructive"
-        });
-      }
+  // Fetch post data if editing
+  const { isLoading: isLoadingPost } = useQuery({
+    queryKey: ['post', id],
+    queryFn: () => getPost(id as string),
+    enabled: !!id,
+    onSuccess: (data) => {
+      setFormData({
+        title: data.title,
+        titleAr: data.titleAr,
+        excerpt: data.excerpt,
+        excerptAr: data.excerptAr,
+        content: data.content,
+        contentAr: data.contentAr,
+        image: data.image,
+        date: data.date,
+        author: data.author,
+        tags: [...data.tags],
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: language === "en" ? "Post not found" : "لم يتم العثور على المنشور",
+        description: language === "en" 
+          ? "The post you're trying to edit does not exist" 
+          : "المنشور الذي تحاول تعديله غير موجود",
+        variant: "destructive"
+      });
+      navigate("/dashboard/blog");
     }
-  }, [id, navigate, toast, language]);
+  });
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleContentChange = (content: string) => {
+    setFormData(prev => ({ ...prev, content }));
+  };
+  
+  const handleContentArChange = (contentAr: string) => {
+    setFormData(prev => ({ ...prev, contentAr }));
   };
   
   const addTag = () => {
@@ -109,24 +109,121 @@ const BlogEditor = () => {
     }));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  // File upload handler
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `post-images/${fileName}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('media')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('media')
+        .getPublicUrl(filePath);
+        
+      setFormData(prev => ({ ...prev, image: publicUrl }));
+      
+      toast({
+        title: language === "en" ? "Image uploaded" : "تم رفع الصورة",
+        description: language === "en" ? "Image has been uploaded successfully" : "تم رفع الصورة بنجاح",
+      });
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: language === "en" ? "Upload failed" : "فشل الرفع",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: createPost,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      toast({
+        title: language === "en" ? "Post created" : "تم إنشاء المنشور",
+        description: language === "en" 
+          ? "Your post has been created successfully" 
+          : "تم إنشاء المنشور بنجاح",
+      });
+      navigate("/dashboard/blog");
+    },
+    onError: (error) => {
+      console.error("Error creating post:", error);
+      toast({
+        title: language === "en" ? "Error" : "خطأ",
+        description: language === "en"
+          ? "Failed to create post. Please try again."
+          : "فشل في إنشاء المنشور. الرجاء المحاولة مرة أخرى.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: Partial<PostType> }) => 
+      updatePost(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['post', id] });
+      toast({
+        title: language === "en" ? "Post updated" : "تم تحديث المنشور",
+        description: language === "en" 
+          ? "Your post has been updated successfully" 
+          : "تم تحديث المنشور بنجاح",
+      });
+      navigate("/dashboard/blog");
+    },
+    onError: (error) => {
+      console.error("Error updating post:", error);
+      toast({
+        title: language === "en" ? "Error" : "خطأ",
+        description: language === "en"
+          ? "Failed to update post. Please try again."
+          : "فشل في تحديث المنشور. الرجاء المحاولة مرة أخرى.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // This would save to a database in a real implementation
-    console.log("Saving post:", formData);
-    
-    toast({
-      title: isEditing 
-        ? (language === "en" ? "Post updated" : "تم تحديث المنشور")
-        : (language === "en" ? "Post created" : "تم إنشاء المنشور"),
-      description: language === "en" 
-        ? "Your post has been saved successfully"
-        : "تم حفظ المنشور بنجاح",
-    });
-    
-    // Return to blog list
-    navigate("/dashboard/blog");
+    if (isEditing && id) {
+      updateMutation.mutate({ id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
   };
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isLoading = isLoadingPost;
+
+  if (isLoading) {
+    return (
+      <DashboardLayout
+        title={language === "en" ? "Loading..." : "جار التحميل..."}
+        breadcrumbs={[
+          { label: language === "en" ? "Blog" : "المدونة", href: "/dashboard/blog" }
+        ]}
+      >
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -193,18 +290,13 @@ const BlogEditor = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="content">Content</Label>
-                      <Textarea
-                        id="content"
-                        name="content"
+                      <RichTextEditor 
                         value={formData.content}
-                        onChange={handleInputChange}
-                        placeholder="Post content"
-                        rows={12}
-                        className="min-h-[300px]"
+                        onChange={handleContentChange}
+                        placeholder="Write your post content here..."
+                        height={400}
+                        dir="ltr"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        This would be replaced with an advanced editor in the next phase.
-                      </p>
                     </div>
                   </TabsContent>
                   
@@ -236,19 +328,13 @@ const BlogEditor = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="contentAr">المحتوى</Label>
-                      <Textarea
-                        id="contentAr"
-                        name="contentAr"
+                      <RichTextEditor 
                         value={formData.contentAr}
-                        onChange={handleInputChange}
-                        placeholder="محتوى المنشور"
-                        rows={12}
-                        className="min-h-[300px]"
+                        onChange={handleContentArChange}
+                        placeholder="اكتب محتوى المنشور هنا..."
+                        height={400}
                         dir="rtl"
                       />
-                      <p className="text-xs text-muted-foreground text-right">
-                        سيتم استبدال هذا بمحرر متقدم في المرحلة التالية.
-                      </p>
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -261,14 +347,35 @@ const BlogEditor = () => {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="image">Featured Image URL</Label>
-                  <Input 
-                    id="image" 
-                    name="image" 
-                    value={formData.image}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  <Label htmlFor="image">Featured Image</Label>
+                  {formData.image && (
+                    <div className="relative mb-4 rounded-md overflow-hidden">
+                      <img 
+                        src={formData.image} 
+                        alt={language === "en" ? "Post image" : "صورة المنشور"}
+                        className="w-full h-32 object-cover" 
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col space-y-2">
+                    <Label htmlFor="imageUpload" className="cursor-pointer bg-muted hover:bg-muted/80 text-center py-2 rounded-md transition-colors">
+                      {language === "en" ? "Upload new image" : "رفع صورة جديدة"}
+                    </Label>
+                    <Input 
+                      id="imageUpload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <Input 
+                      id="image" 
+                      name="image" 
+                      value={formData.image}
+                      onChange={handleInputChange}
+                      placeholder={language === "en" ? "Or enter image URL" : "أو أدخل رابط الصورة"}
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
@@ -280,7 +387,7 @@ const BlogEditor = () => {
                     id="date" 
                     name="date" 
                     type="date"
-                    value={formData.date}
+                    value={formData.date.split('T')[0]}
                     onChange={handleInputChange}
                   />
                 </div>
@@ -338,13 +445,23 @@ const BlogEditor = () => {
                   variant="outline" 
                   type="button"
                   onClick={() => navigate("/dashboard/blog")}
+                  disabled={isSubmitting}
                 >
                   {language === "en" ? "Cancel" : "إلغاء"}
                 </Button>
                 
-                <Button type="submit">
-                  <Save className="mr-2 h-4 w-4" />
-                  {language === "en" ? "Save Post" : "حفظ المنشور"}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <span className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {language === "en" ? "Saving..." : "جار الحفظ..."}
+                    </span>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      {language === "en" ? "Save Post" : "حفظ المنشور"}
+                    </>
+                  )}
                 </Button>
               </CardFooter>
             </Card>

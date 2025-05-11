@@ -5,9 +5,9 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { 
   Card, 
   CardContent, 
@@ -19,32 +19,22 @@ import {
   TabsList,
   TabsTrigger
 } from "@/components/ui/tabs";
-import { projects } from "@/data/projects";
+import { supabase } from "@/lib/supabase";
 import { Save, ChevronLeft, Tag, Github, ExternalLink } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-
-interface FormData {
-  title: string;
-  titleAr: string;
-  description: string;
-  descriptionAr: string;
-  image: string;
-  tags: string[];
-  link?: string;
-  github?: string;
-  featured: boolean;
-  technologies: string[];
-  year: string;
-}
+import { getProject, createProject, updateProject } from "@/services/supabase-service";
+import { ProjectType } from "@/data/projects";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 
 const ProjectEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { language } = useLanguage();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(!!id);
   
-  const emptyForm: FormData = {
+  const emptyForm: Omit<ProjectType, "id"> = {
     title: "",
     titleAr: "",
     description: "",
@@ -58,50 +48,94 @@ const ProjectEditor = () => {
     year: new Date().getFullYear().toString()
   };
   
-  const [formData, setFormData] = useState<FormData>(emptyForm);
+  const [formData, setFormData] = useState<Omit<ProjectType, "id">>(emptyForm);
   const [tagInput, setTagInput] = useState("");
   const [techInput, setTechInput] = useState("");
   
-  // Find project data if editing
-  useEffect(() => {
-    if (id) {
-      const project = projects.find(p => p.id === id);
-      if (project) {
-        setFormData({
-          title: project.title,
-          titleAr: project.titleAr,
-          description: project.description,
-          descriptionAr: project.descriptionAr,
-          image: project.image,
-          tags: [...project.tags],
-          link: project.link || "",
-          github: project.github || "",
-          featured: project.featured,
-          technologies: [...project.technologies],
-          year: project.year
-        });
-      } else {
-        // Project not found
-        navigate("/dashboard/projects");
-        toast({
-          title: language === "en" ? "Project not found" : "لم يتم العثور على المشروع",
-          description: language === "en" 
-            ? "The project you're trying to edit does not exist" 
-            : "المشروع الذي تحاول تعديله غير موجود",
-          variant: "destructive"
-        });
-      }
+  // Fetch project data if editing
+  const { isLoading: isLoadingProject } = useQuery({
+    queryKey: ['project', id],
+    queryFn: () => getProject(id as string),
+    enabled: !!id,
+    onSuccess: (data) => {
+      setFormData({
+        title: data.title,
+        titleAr: data.titleAr,
+        description: data.description,
+        descriptionAr: data.descriptionAr,
+        image: data.image,
+        tags: [...data.tags],
+        link: data.link || "",
+        github: data.github || "",
+        featured: data.featured,
+        technologies: [...data.technologies],
+        year: data.year
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: language === "en" ? "Project not found" : "لم يتم العثور على المشروع",
+        description: language === "en" 
+          ? "The project you're trying to edit does not exist" 
+          : "المشروع الذي تحاول تعديله غير موجود",
+        variant: "destructive"
+      });
+      navigate("/dashboard/projects");
     }
-  }, [id, navigate, toast, language]);
+  });
   
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleDescriptionChange = (description: string) => {
+    setFormData(prev => ({ ...prev, description }));
+  };
+  
+  const handleDescriptionArChange = (descriptionAr: string) => {
+    setFormData(prev => ({ ...prev, descriptionAr }));
   };
   
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: checked }));
+  };
+  
+  // File upload handler
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `project-images/${fileName}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('media')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('media')
+        .getPublicUrl(filePath);
+        
+      setFormData(prev => ({ ...prev, image: publicUrl }));
+      
+      toast({
+        title: language === "en" ? "Image uploaded" : "تم رفع الصورة",
+        description: language === "en" ? "Image has been uploaded successfully" : "تم رفع الصورة بنجاح",
+      });
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: language === "en" ? "Upload failed" : "فشل الرفع",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
   
   const addTag = () => {
@@ -132,24 +166,85 @@ const ProjectEditor = () => {
     }));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: createProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast({
+        title: language === "en" ? "Project created" : "تم إنشاء المشروع",
+        description: language === "en" 
+          ? "Your project has been created successfully" 
+          : "تم إنشاء المشروع بنجاح",
+      });
+      navigate("/dashboard/projects");
+    },
+    onError: (error) => {
+      console.error("Error creating project:", error);
+      toast({
+        title: language === "en" ? "Error" : "خطأ",
+        description: language === "en"
+          ? "Failed to create project. Please try again."
+          : "فشل في إنشاء المشروع. الرجاء المحاولة مرة أخرى.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: Partial<ProjectType> }) => 
+      updateProject(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project', id] });
+      toast({
+        title: language === "en" ? "Project updated" : "تم تحديث المشروع",
+        description: language === "en" 
+          ? "Your project has been updated successfully" 
+          : "تم تحديث المشروع بنجاح",
+      });
+      navigate("/dashboard/projects");
+    },
+    onError: (error) => {
+      console.error("Error updating project:", error);
+      toast({
+        title: language === "en" ? "Error" : "خطأ",
+        description: language === "en"
+          ? "Failed to update project. Please try again."
+          : "فشل في تحديث المشروع. الرجاء المحاولة مرة أخرى.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // This would save to a database in a real implementation
-    console.log("Saving project:", formData);
-    
-    toast({
-      title: isEditing 
-        ? (language === "en" ? "Project updated" : "تم تحديث المشروع")
-        : (language === "en" ? "Project created" : "تم إنشاء المشروع"),
-      description: language === "en" 
-        ? "Your project has been saved successfully"
-        : "تم حفظ المشروع بنجاح",
-    });
-    
-    // Return to projects list
-    navigate("/dashboard/projects");
+    if (isEditing && id) {
+      updateMutation.mutate({ id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
   };
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isLoading = isLoadingProject;
+
+  if (isLoading) {
+    return (
+      <DashboardLayout
+        title={language === "en" ? "Loading..." : "جار التحميل..."}
+        breadcrumbs={[
+          { label: language === "en" ? "Projects" : "المشاريع", href: "/dashboard/projects" }
+        ]}
+      >
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -204,13 +299,12 @@ const ProjectEditor = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        name="description"
+                      <RichTextEditor 
                         value={formData.description}
-                        onChange={handleInputChange}
-                        placeholder="Description of the project"
-                        rows={6}
+                        onChange={handleDescriptionChange}
+                        placeholder="Describe your project..."
+                        height={300}
+                        dir="ltr"
                       />
                     </div>
                   </TabsContent>
@@ -230,13 +324,11 @@ const ProjectEditor = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="descriptionAr">الوصف</Label>
-                      <Textarea
-                        id="descriptionAr"
-                        name="descriptionAr"
+                      <RichTextEditor 
                         value={formData.descriptionAr}
-                        onChange={handleInputChange}
-                        placeholder="وصف المشروع"
-                        rows={6}
+                        onChange={handleDescriptionArChange}
+                        placeholder="قم بوصف مشروعك..."
+                        height={300}
                         dir="rtl"
                       />
                     </div>
@@ -251,14 +343,35 @@ const ProjectEditor = () => {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="image">Project Image URL</Label>
-                  <Input 
-                    id="image" 
-                    name="image" 
-                    value={formData.image}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  <Label htmlFor="image">Project Image</Label>
+                  {formData.image && (
+                    <div className="relative mb-4 rounded-md overflow-hidden">
+                      <img 
+                        src={formData.image} 
+                        alt={language === "en" ? "Project image" : "صورة المشروع"}
+                        className="w-full h-32 object-cover" 
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col space-y-2">
+                    <Label htmlFor="imageUpload" className="cursor-pointer bg-muted hover:bg-muted/80 text-center py-2 rounded-md transition-colors">
+                      {language === "en" ? "Upload new image" : "رفع صورة جديدة"}
+                    </Label>
+                    <Input 
+                      id="imageUpload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <Input 
+                      id="image" 
+                      name="image" 
+                      value={formData.image}
+                      onChange={handleInputChange}
+                      placeholder={language === "en" ? "Or enter image URL" : "أو أدخل رابط الصورة"}
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
@@ -389,13 +502,23 @@ const ProjectEditor = () => {
                   variant="outline" 
                   type="button"
                   onClick={() => navigate("/dashboard/projects")}
+                  disabled={isSubmitting}
                 >
                   {language === "en" ? "Cancel" : "إلغاء"}
                 </Button>
                 
-                <Button type="submit">
-                  <Save className="mr-2 h-4 w-4" />
-                  {language === "en" ? "Save Project" : "حفظ المشروع"}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <span className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {language === "en" ? "Saving..." : "جار الحفظ..."}
+                    </span>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      {language === "en" ? "Save Project" : "حفظ المشروع"}
+                    </>
+                  )}
                 </Button>
               </CardFooter>
             </Card>

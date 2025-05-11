@@ -1,11 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useLanguage } from "@/context/LanguageContext";
-import { posts } from "@/data/posts";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Search, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { 
@@ -16,6 +15,8 @@ import {
   PaginationNext, 
   PaginationPrevious 
 } from "@/components/ui/pagination";
+import { useQuery } from "@tanstack/react-query";
+import { getPosts } from "@/services/supabase-service";
 
 const POSTS_PER_PAGE = 6;
 
@@ -24,7 +25,23 @@ const Blog = () => {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-
+  const location = useLocation();
+  
+  // Get tag from URL query if present
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tagParam = params.get('tag');
+    if (tagParam) {
+      setActiveTag(tagParam);
+    }
+  }, [location.search]);
+  
+  // Fetch posts
+  const { data: posts = [], isLoading, isError } = useQuery({
+    queryKey: ['posts'],
+    queryFn: getPosts,
+  });
+  
   // Extract unique tags from posts
   const uniqueTags = Array.from(
     new Set(posts.flatMap(post => post.tags))
@@ -56,7 +73,7 @@ const Blog = () => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -120,46 +137,70 @@ const Blog = () => {
               ))}
             </div>
 
-            {/* Posts grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {paginatedPosts.map((post) => (
-                <Link 
-                  key={post.id}
-                  to={`/blog/${post.id}`} 
-                  className="group bg-card border rounded-xl overflow-hidden transition-all hover:shadow-lg animate-fade-in"
-                >
-                  <div className="aspect-video w-full overflow-hidden">
-                    <img 
-                      src={post.image} 
-                      alt={language === "en" ? post.title : post.titleAr}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  </div>
-                  
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{post.author}</span>
-                      <span>{new Date(post.date).toLocaleDateString(language === "en" ? "en-US" : "ar-SA")}</span>
-                    </div>
-                    
-                    <h3 className="text-xl font-semibold group-hover:text-primary transition-colors">
-                      {language === "en" ? post.title : post.titleAr}
-                    </h3>
-                    
-                    <p className="text-muted-foreground text-sm line-clamp-3">
-                      {language === "en" ? post.excerpt : post.excerptAr}
-                    </p>
-                    
-                    <div className="flex items-center text-sm font-medium text-primary">
-                      <span>{t("readMore")}</span>
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            {/* Loading state */}
+            {isLoading && (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            )}
+            
+            {/* Error state */}
+            {isError && (
+              <div className="text-center py-12">
+                <p className="text-lg text-red-500 mb-4">
+                  {language === "en" 
+                    ? "Failed to load posts." 
+                    : "فشل في تحميل المنشورات."
+                  }
+                </p>
+                <Button onClick={() => window.location.reload()}>
+                  {language === "en" ? "Retry" : "إعادة المحاولة"}
+                </Button>
+              </div>
+            )}
 
-            {filteredPosts.length === 0 && (
+            {/* Posts grid */}
+            {!isLoading && !isError && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {paginatedPosts.map((post) => (
+                  <Link 
+                    key={post.id}
+                    to={`/blog/${post.id}`} 
+                    className="group bg-card border rounded-xl overflow-hidden transition-all hover:shadow-lg animate-fade-in"
+                  >
+                    <div className="aspect-video w-full overflow-hidden">
+                      <img 
+                        src={post.image} 
+                        alt={language === "en" ? post.title : post.titleAr}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                    
+                    <div className="p-6 space-y-4">
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{post.author}</span>
+                        <span>{new Date(post.date).toLocaleDateString(language === "en" ? "en-US" : "ar-SA")}</span>
+                      </div>
+                      
+                      <h3 className="text-xl font-semibold group-hover:text-primary transition-colors">
+                        {language === "en" ? post.title : post.titleAr}
+                      </h3>
+                      
+                      <p className="text-muted-foreground text-sm line-clamp-3">
+                        {language === "en" ? post.excerpt : post.excerptAr}
+                      </p>
+                      
+                      <div className="flex items-center text-sm font-medium text-primary">
+                        <span>{t("readMore")}</span>
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {!isLoading && !isError && filteredPosts.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-lg text-muted-foreground">
                   {language === "en" 
@@ -171,7 +212,7 @@ const Blog = () => {
             )}
 
             {/* Pagination */}
-            {filteredPosts.length > 0 && totalPages > 1 && (
+            {!isLoading && !isError && filteredPosts.length > 0 && totalPages > 1 && (
               <div className="mt-12">
                 <Pagination>
                   <PaginationContent>
