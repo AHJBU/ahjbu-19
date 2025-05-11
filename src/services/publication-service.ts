@@ -18,7 +18,6 @@ export interface Publication {
   featured: boolean;
   created_at?: string;
   updated_at?: string;
-  // إضافة الحقل المفقود للمشروع المرتبط
   relatedProjectId?: string;
 }
 

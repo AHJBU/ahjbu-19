@@ -9,9 +9,9 @@ import { Image as ImageIcon } from "lucide-react";
 export interface MediaSelectorProps {
   value?: string;
   onValueChange?: (value: string) => void;
-  onChange?: (value: string) => void; // Add backward compatibility
-  onSelectMedia?: (url: string) => void; // إضافة خاصية الاختيار
-  onClose?: () => void; // إضافة خاصية الإغلاق
+  onChange?: (value: string) => void; // للتوافق مع الإصدارات السابقة
+  onSelectMedia?: (url: string) => void;
+  onClose?: () => void;
   type?: string;
 }
 
@@ -26,7 +26,7 @@ export function MediaSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value || "");
 
-  // Handle both onChange and onValueChange for backward compatibility
+  // التعامل مع كل من onChange و onValueChange للتوافق مع الإصدارات السابقة
   const handleChange = (url: string) => {
     if (onChange) onChange(url);
     if (onValueChange) onValueChange(url);
@@ -35,6 +35,7 @@ export function MediaSelector({
 
   const handleSelect = (url: string) => {
     handleChange(url);
+    setInputValue(url);
     setIsOpen(false);
     if (onClose) onClose();
   };
@@ -72,12 +73,12 @@ export function MediaSelector({
             <DialogTrigger asChild>
               <Button type="button" variant="outline" className="w-full">
                 <ImageIcon className="h-4 w-4 mr-2" />
-                Browse Media
+                اختيار وسائط
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl w-[90vw]">
               <DialogHeader>
-                <DialogTitle>Select Media</DialogTitle>
+                <DialogTitle>اختيار وسائط</DialogTitle>
               </DialogHeader>
               <div className="h-[70vh] overflow-auto">
                 <MediaCenter onSelect={handleSelect} mediaType={type} />
@@ -89,12 +90,12 @@ export function MediaSelector({
         <div className="flex gap-2">
           <Input 
             type="text" 
-            placeholder="Or enter URL directly"
+            placeholder="أو أدخل الرابط مباشرة"
             value={inputValue}
             onChange={handleInputChange}
           />
           <Button type="button" onClick={handleInputConfirm} variant="secondary">
-            Use URL
+            استخدام الرابط
           </Button>
         </div>
       </div>
