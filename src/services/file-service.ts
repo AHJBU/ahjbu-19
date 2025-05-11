@@ -1,98 +1,102 @@
 
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL, listAll, getMetadata, deleteObject } from "firebase/storage";
-import { File } from "@/types/file";
+import { supabase } from '@/lib/supabase';
+import { File } from '@/types/file';
 
-// Upload a file to Firebase Storage
-export const uploadFile = async (
-  file: Blob, 
-  folderPath: string, 
-  fileName: string,
-  metadata?: any,
-  onProgress?: (progress: number) => void
-): Promise<string> => {
-  const timestamp = new Date().getTime();
-  const fullFileName = `${timestamp}-${fileName}`;
-  const storageRef = ref(storage, `${folderPath}/${fullFileName}`);
-  
-  const uploadTask = uploadBytesResumable(storageRef, file, metadata);
-  
-  return new Promise((resolve, reject) => {
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        if (onProgress) onProgress(progress);
-      },
-      (error) => {
-        console.error("Upload error:", error);
-        reject(error);
-      },
-      async () => {
-        const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-        resolve(downloadUrl);
-      }
-    );
-  });
+// Get all files
+export const getFiles = async (): Promise<File[]> => {
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data as File[];
 };
 
-// Get all files from a folder
-export const getFilesFromFolder = async (folderPath: string): Promise<File[]> => {
-  try {
-    const storageRef = ref(storage, folderPath);
-    const result = await listAll(storageRef);
+// Get a file by ID
+export const getFile = async (id: string): Promise<File> => {
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  return data as File;
+};
+
+// Create a new file
+export const createFile = async (file: Omit<File, 'id'>): Promise<File> => {
+  const { data, error } = await supabase
+    .from('files')
+    .insert([file])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as File;
+};
+
+// Update an existing file
+export const updateFile = async (id: string, file: Partial<File>): Promise<File> => {
+  const { data, error } = await supabase
+    .from('files')
+    .update(file)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as File;
+};
+
+// Delete a file
+export const deleteFile = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('files')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
+// Get files by category
+export const getFilesByCategory = async (category: string): Promise<File[]> => {
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('category', category)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data as File[];
+};
+
+// Get featured files
+export const getFeaturedFiles = async (limit: number = 6): Promise<File[]> => {
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('featured', true)
+    .order('date', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data as File[];
+};
+
+// Track file downloads
+export const trackFileDownload = async (fileId: string): Promise<void> => {
+  // This function would update a downloads counter
+  // In a real implementation, you might track in a separate table
+  const { data } = await supabase
+    .from('files')
+    .select('*')
+    .eq('id', fileId)
+    .single();
     
-    const filesPromises = result.items.map(async (item) => {
-      const url = await getDownloadURL(item);
-      const metadata = await getMetadata(item);
-      
-      // Parse the file name to extract any metadata we stored in it
-      const nameParts = item.name.split('-');
-      const timestamp = nameParts[0];
-      const originalName = nameParts.slice(1).join('-');
-      
-      return {
-        id: item.name,
-        title: originalName,
-        titleAr: originalName, // You can update this if you store Arabic titles
-        description: metadata.customMetadata?.description || "",
-        descriptionAr: metadata.customMetadata?.descriptionAr || "",
-        category: metadata.customMetadata?.category || "Uncategorized",
-        fileType: metadata.contentType?.split('/')[1] || "file",
-        size: metadata.size,
-        date: metadata.timeCreated,
-        downloadUrl: url,
-        fullPath: item.fullPath,
-        featured: metadata.customMetadata?.featured === 'true'
-      };
-    });
-
-    return await Promise.all(filesPromises);
-  } catch (error) {
-    console.error("Error getting files from folder:", error);
-    throw error;
-  }
-};
-
-// Delete a file from Firebase Storage
-export const deleteFile = async (fullPath: string): Promise<void> => {
-  try {
-    const fileRef = ref(storage, fullPath);
-    await deleteObject(fileRef);
-  } catch (error) {
-    console.error("Error deleting file:", error);
-    throw error;
-  }
-};
-
-// Update file metadata
-export const updateFileMetadata = async (fullPath: string, metadata: any): Promise<void> => {
-  try {
-    // Unfortunately, Firebase Storage doesn't allow updating metadata directly
-    // We would need to re-upload the file or create a Firestore document to store additional metadata
-    console.warn("Firebase Storage doesn't support updating metadata. Consider using Firestore for metadata.");
-  } catch (error) {
-    console.error("Error updating file metadata:", error);
-    throw error;
-  }
+  if (!data) return;
+  
+  // For now we'll just console log the download
+  console.log(`File ${fileId} was downloaded`);
 };

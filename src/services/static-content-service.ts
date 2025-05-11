@@ -106,32 +106,46 @@ const DEFAULT_FOOTER_CONTENT: FooterContent = {
 function getContent<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
   
-  const stored = localStorage.getItem(key);
-  return stored ? JSON.parse(stored) : defaultValue;
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : defaultValue;
+  } catch (error) {
+    console.error(`Error getting ${key} from localStorage:`, error);
+    return defaultValue;
+  }
 }
 
 // Generic function to save content
 function saveContent<T>(key: string, value: T): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(key, JSON.stringify(value));
-    // Dispatch an event to notify components that content has been updated
-    window.dispatchEvent(new Event('content-updated'));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      // Dispatch an event to notify components that content has been updated
+      window.dispatchEvent(new Event('content-updated'));
+    } catch (error) {
+      console.error(`Error saving ${key} to localStorage:`, error);
+    }
   }
 }
 
 // Hook for site settings
 export function useSiteSettings() {
-  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [settings, setSettings] = useState<SiteSettings>(() => getContent(KEYS.SITE_SETTINGS, DEFAULT_SITE_SETTINGS));
   
   useEffect(() => {
-    setSettings(getContent<SiteSettings>(KEYS.SITE_SETTINGS, DEFAULT_SITE_SETTINGS));
-    
-    const handleUpdate = () => {
+    const handleStorageChange = () => {
       setSettings(getContent<SiteSettings>(KEYS.SITE_SETTINGS, DEFAULT_SITE_SETTINGS));
     };
     
-    window.addEventListener('content-updated', handleUpdate);
-    return () => window.removeEventListener('content-updated', handleUpdate);
+    // Listen for storage changes from other tabs/windows
+    window.addEventListener('storage', handleStorageChange);
+    // Listen for custom content-updated event
+    window.addEventListener('content-updated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('content-updated', handleStorageChange);
+    };
   }, []);
   
   const updateSettings = (newSettings: SiteSettings) => {
@@ -144,17 +158,20 @@ export function useSiteSettings() {
 
 // Hook for about content
 export function useAboutContent() {
-  const [aboutContent, setAboutContent] = useState<AboutContent>(DEFAULT_ABOUT_CONTENT);
+  const [aboutContent, setAboutContent] = useState<AboutContent>(() => getContent(KEYS.ABOUT_CONTENT, DEFAULT_ABOUT_CONTENT));
   
   useEffect(() => {
-    setAboutContent(getContent<AboutContent>(KEYS.ABOUT_CONTENT, DEFAULT_ABOUT_CONTENT));
-    
-    const handleUpdate = () => {
+    const handleStorageChange = () => {
       setAboutContent(getContent<AboutContent>(KEYS.ABOUT_CONTENT, DEFAULT_ABOUT_CONTENT));
     };
     
-    window.addEventListener('content-updated', handleUpdate);
-    return () => window.removeEventListener('content-updated', handleUpdate);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('content-updated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('content-updated', handleStorageChange);
+    };
   }, []);
   
   const updateAboutContent = (newContent: AboutContent) => {
@@ -167,17 +184,20 @@ export function useAboutContent() {
 
 // Hook for home page content
 export function useHomePageContent() {
-  const [homePageContent, setHomePageContent] = useState<HomePageContent>(DEFAULT_HOME_PAGE_CONTENT);
+  const [homePageContent, setHomePageContent] = useState<HomePageContent>(() => getContent(KEYS.HOME_PAGE_CONTENT, DEFAULT_HOME_PAGE_CONTENT));
   
   useEffect(() => {
-    setHomePageContent(getContent<HomePageContent>(KEYS.HOME_PAGE_CONTENT, DEFAULT_HOME_PAGE_CONTENT));
-    
-    const handleUpdate = () => {
+    const handleStorageChange = () => {
       setHomePageContent(getContent<HomePageContent>(KEYS.HOME_PAGE_CONTENT, DEFAULT_HOME_PAGE_CONTENT));
     };
     
-    window.addEventListener('content-updated', handleUpdate);
-    return () => window.removeEventListener('content-updated', handleUpdate);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('content-updated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('content-updated', handleStorageChange);
+    };
   }, []);
   
   const updateHomePageContent = (newContent: HomePageContent) => {
@@ -190,17 +210,20 @@ export function useHomePageContent() {
 
 // Hook for footer content
 export function useFooterContent() {
-  const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
+  const [footerContent, setFooterContent] = useState<FooterContent>(() => getContent(KEYS.FOOTER_CONTENT, DEFAULT_FOOTER_CONTENT));
   
   useEffect(() => {
-    setFooterContent(getContent<FooterContent>(KEYS.FOOTER_CONTENT, DEFAULT_FOOTER_CONTENT));
-    
-    const handleUpdate = () => {
+    const handleStorageChange = () => {
       setFooterContent(getContent<FooterContent>(KEYS.FOOTER_CONTENT, DEFAULT_FOOTER_CONTENT));
     };
     
-    window.addEventListener('content-updated', handleUpdate);
-    return () => window.removeEventListener('content-updated', handleUpdate);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('content-updated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('content-updated', handleStorageChange);
+    };
   }, []);
   
   const updateFooterContent = (newContent: FooterContent) => {

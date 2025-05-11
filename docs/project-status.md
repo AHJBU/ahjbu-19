@@ -13,7 +13,8 @@
 - ✅ Blog post management (create, edit, delete)
 - ✅ Project portfolio management
 - ✅ Rich text editor integration
-- ✅ Media management with Firebase
+- ✅ Media management with Firebase Storage
+- ✅ Static content editor for site settings
 
 ### 3. Authentication
 - ✅ User authentication with Supabase
@@ -27,35 +28,47 @@
 - ✅ File management system
 
 ### 5. Database Integration
-- ✅ Supabase tables for blog posts and projects
-- ✅ Firebase storage for media files
+- ✅ Supabase tables for blog posts, projects, achievements, publications, and files
+- ✅ Firebase storage for media files and downloadable content
 - ✅ Row-level security policies
 
-## In-Progress Features
-
-### 1. Course Management
+### 6. Course Management
 - ✅ Course data structure and types
 - ✅ Course listing and browsing interface
 - ✅ Course creation and editing in dashboard
-- ⏳ Course detail view and enrollment system
-- ⏳ Course order tracking
+- ✅ Course price management (free/paid settings)
+- ✅ Featured courses highlighting
 
-### 2. Publications & Research
+### 7. Publications & Research
 - ✅ Publications data structure
 - ✅ Publications page layout
-- ⏳ Related content linking
-- ⏳ Citation system
+- ✅ Publication-to-project linking
+- ✅ Publication-to-post linking
+- ✅ Media appearance support
 
-### 3. Achievements
+### 8. Achievements
 - ✅ Achievements data structure
 - ✅ Achievements page layout
-- ⏳ Timeline view optimization
+- ✅ Timeline view implementation
+- ✅ Achievement categorization and filtering
 
-### 4. File Downloads
+### 9. File Downloads
 - ✅ File listing page
 - ✅ File categorization and filtering
 - ✅ File upload via Firebase
-- ⏳ Download tracking and analytics
+- ✅ Download management system
+
+## In-Progress Features
+
+### 1. Course User Experience
+- ⏳ Course enrollment flow
+- ⏳ Course detail view and content display
+- ⏳ Order tracking and management
+
+### 2. Analytics & Usage Tracking
+- ⏳ Download count tracking
+- ⏳ View statistics for content
+- ⏳ Basic user engagement metrics
 
 ## Pending Features
 
@@ -75,57 +88,120 @@
 - ❌ Course bookmarks and favorites
 - ❌ User-to-user messaging system
 
-### 4. Analytics & Reporting
+### 4. Advanced Analytics & Reporting
 - ❌ Detailed analytics dashboard
-- ❌ Content performance metrics
-- ❌ Download and engagement tracking
+- ❌ Advanced content performance metrics
 - ❌ User behavior analysis
 
 ## Technical Debt
 
 1. **Refactoring Needs**:
-   - Some components are too large and should be broken down (especially MediaCenter, MediaUpload, and Files page components)
-   - Consolidate duplicate code in service files
+   - ✅ Fixed MediaSelector component props typing
+   - ⏳ Some components are still too large and should be broken down
+   - ⏳ Further consolidate duplicate code in service files
 
 2. **Performance Optimization**:
-   - Implement virtualization for long lists
-   - Optimize image loading with lazy loading
-   - Add proper caching strategies
+   - ⏳ Implement virtualization for long lists
+   - ⏳ Further optimize image loading with lazy loading
+   - ⏳ Add proper caching strategies
 
 3. **Testing**:
-   - No automated tests implemented yet
-   - Need unit tests for critical components
-   - Need integration tests for main user flows
+   - ❌ No automated tests implemented yet
+   - ❌ Need unit tests for critical components
+   - ❌ Need integration tests for main user flows
+
+## Firebase Setup Instructions
+
+1. **Create Firebase Project**:
+   - Go to Firebase Console (https://console.firebase.google.com/)
+   - Create a new project with your preferred name
+   - Enable Google Analytics if needed
+
+2. **Setup Storage**:
+   - In Firebase console, go to "Storage" in the left sidebar
+   - Click "Get started" and follow the setup wizard
+   - Choose a location for your data
+
+3. **Create Storage Folders**:
+   - Create the following folders in Firebase Storage:
+     - `/images` - For general images
+     - `/images/posts` - For blog post images
+     - `/images/projects` - For project images
+     - `/images/achievements` - For achievement images
+     - `/images/publications` - For publication images
+     - `/files` - For downloadable files
+
+4. **Setup Storage Rules**:
+   - Go to "Rules" tab in Storage
+   - Update rules to allow read access to anyone and write access to authenticated users:
+   ```
+   rules_version = '2';
+   service firebase.storage {
+     match /b/{bucket}/o {
+       match /{allPaths=**} {
+         allow read: if true;
+         allow write: if request.auth != null;
+       }
+     }
+   }
+   ```
+
+5. **Get Firebase Configuration**:
+   - Go to Project Settings (gear icon in the sidebar)
+   - Scroll down to "Your apps" section
+   - Click on the web app icon (</>) to register a web app
+   - Follow the registration steps
+   - Copy the firebaseConfig object from the provided code snippet
+
+6. **Update Firebase Configuration in Your App**:
+   - Update the configuration in `src/lib/firebase.ts` with your details:
+   ```javascript
+   const firebaseConfig = {
+     apiKey: "YOUR_API_KEY",
+     authDomain: "YOUR_AUTH_DOMAIN",
+     projectId: "YOUR_PROJECT_ID",
+     storageBucket: "YOUR_STORAGE_BUCKET",
+     messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+     appId: "YOUR_APP_ID",
+     measurementId: "YOUR_MEASUREMENT_ID"
+   };
+   ```
+
+## Supabase Database Setup
+
+1. **Create Tables**:
+   - Execute the SQL script provided in `public/supabase-setup.sql` in your Supabase SQL editor
+   - This will create all necessary tables with proper relationships
+
+2. **Update Row Level Security Policies**:
+   - Modify the admin access policies in the SQL script to use your actual admin email
+   - Re-run those specific policy creation statements
+
+3. **Initialize Basic Data**:
+   - Consider adding some initial data to your tables for testing
 
 ## Next Steps (Priority Order)
 
-1. Complete course management system:
-   - Finish course detail view
-   - Implement enrollment flow
-   - Add order management
+1. Complete course enrollment system:
+   - Add course detail view
+   - Implement enrollment flow for both free and paid courses
 
-2. Implement publications and research linking:
-   - Connect publications to related projects and posts
-   - Add proper filtering and categorization
+2. Enhance file management:
+   - Add file download tracking and statistics
+   - Improve file categorization UX
 
-3. Optimize file management:
-   - Add metadata editing for files
-   - Improve file categorization
-   - Add file statistics
+3. Performance optimizations:
+   - Implement code splitting for large components
+   - Add lazy loading for images and heavy components
 
-4. Enhance achievements page:
-   - Implement interactive timeline
-   - Add filtering by achievement type
-   - Improve mobile layout
-
-5. Complete deployment setup:
-   - Finalize VPS deployment process
+4. Prepare for deployment:
+   - Finalize VPS deployment process using the guide
    - Set up CI/CD pipeline
    - Implement backup strategy
 
 ## Deployment Status
 
-The application is ready for initial deployment with the following considerations:
+The application is ready for deployment with the following considerations:
 
 1. **Environment Setup**:
    - Supabase project is configured and connected
@@ -135,10 +211,25 @@ The application is ready for initial deployment with the following consideration
 2. **Deployment Methods**:
    - VPS deployment guide has been created
    - Static build is ready to be served via Nginx
-   - Database migrations are prepared
+   - Database schemas and migrations are prepared
 
 3. **Post-Deployment Tasks**:
    - Set up SSL certificates
    - Configure domain name
    - Implement monitoring and logging
    - Set up regular backups
+
+## Useful Commands
+
+### Build the Application
+```
+npm run build
+```
+
+### Preview the Production Build
+```
+npm run preview
+```
+
+### Deploy to VPS
+Follow the steps in the VPS deployment guide (`docs/vps-deployment-guide.md`).
