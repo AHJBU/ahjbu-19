@@ -184,6 +184,155 @@ export const getAllFiles = async (): Promise<FileModel[]> => {
   }));
 };
 
+// Update file metadata
+export const updateFileMetadata = async (
+  fileId: string,
+  metadata: {
+    title?: string;
+    titleAr?: string;
+    description?: string;
+    descriptionAr?: string;
+    category?: string;
+    featured?: boolean;
+  }
+): Promise<void> => {
+  try {
+    // First, check if file_features record exists
+    const checkSql = `
+      SELECT * FROM file_features 
+      WHERE file_id = ?
+    `;
+    
+    const existingFeature = await queryOne(checkSql, [fileId]);
+    
+    if (existingFeature) {
+      // Update existing record
+      const updates: string[] = [];
+      const values: any[] = [];
+      
+      if (metadata.title !== undefined) {
+        updates.push('title = ?');
+        values.push(metadata.title);
+      }
+      
+      if (metadata.titleAr !== undefined) {
+        updates.push('title_ar = ?');
+        values.push(metadata.titleAr);
+      }
+      
+      if (metadata.description !== undefined) {
+        updates.push('description = ?');
+        values.push(metadata.description);
+      }
+      
+      if (metadata.descriptionAr !== undefined) {
+        updates.push('description_ar = ?');
+        values.push(metadata.descriptionAr);
+      }
+      
+      if (metadata.category !== undefined) {
+        updates.push('category = ?');
+        values.push(metadata.category);
+      }
+      
+      if (metadata.featured !== undefined) {
+        updates.push('featured = ?');
+        values.push(metadata.featured ? 1 : 0);
+      }
+      
+      if (updates.length > 0) {
+        const updateSql = `
+          UPDATE file_features 
+          SET ${updates.join(', ')}
+          WHERE file_id = ?
+        `;
+        
+        values.push(fileId);
+        await execute(updateSql, values);
+      }
+    } else {
+      // Insert new record
+      const insertSql = `
+        INSERT INTO file_features (
+          file_id, title, title_ar, description, description_ar, category, featured
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      await execute(insertSql, [
+        fileId,
+        metadata.title || null,
+        metadata.titleAr || null,
+        metadata.description || null,
+        metadata.descriptionAr || null,
+        metadata.category || 'Document',
+        metadata.featured ? 1 : 0
+      ]);
+    }
+  } catch (error) {
+    console.error(`Error updating file metadata for file ${fileId}:`, error);
+    throw error;
+  }
+};
+
+// Track file download
+export const trackFileDownload = async (
+  fileId: string,
+  userData?: { 
+    ipAddress?: string;
+    userAgent?: string;
+  }
+): Promise<void> => {
+  try {
+    const sql = `
+      INSERT INTO file_downloads (
+        file_id, download_date, ip_address, user_agent
+      )
+      VALUES (?, NOW(), ?, ?)
+    `;
+    
+    await execute(sql, [
+      fileId,
+      userData?.ipAddress || null,
+      userData?.userAgent || null
+    ]);
+  } catch (error) {
+    console.error(`Error tracking download for file ${fileId}:`, error);
+    // Don't throw error to avoid disrupting download flow
+  }
+};
+
+// Get download statistics for a file
+export const getFileDownloadStats = async (fileId: string): Promise<{ total: number, recent: number }> => {
+  try {
+    // Total downloads
+    const totalSql = `
+      SELECT COUNT(*) as count 
+      FROM file_downloads 
+      WHERE file_id = ?
+    `;
+    
+    const totalResult = await queryOne<{count: number}>(totalSql, [fileId]);
+    
+    // Recent downloads (last 30 days)
+    const recentSql = `
+      SELECT COUNT(*) as count 
+      FROM file_downloads 
+      WHERE file_id = ? AND download_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    `;
+    
+    const recentResult = await queryOne<{count: number}>(recentSql, [fileId]);
+    
+    return {
+      total: totalResult?.count || 0,
+      recent: recentResult?.count || 0
+    };
+  } catch (error) {
+    console.error(`Error getting download stats for file ${fileId}:`, error);
+    return { total: 0, recent: 0 };
+  }
+};
+
 // Create the necessary MySQL tables
 export const createRequiredTables = async (): Promise<void> => {
   try {

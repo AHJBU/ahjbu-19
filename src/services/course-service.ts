@@ -379,6 +379,24 @@ export const getCourseOrders = async (courseId: string): Promise<number> => {
   }
 };
 
+// Get all orders for a course with details
+export const getCourseOrdersWithDetails = async (courseId: string): Promise<any[]> => {
+  try {
+    const sql = `
+      SELECT * 
+      FROM course_orders 
+      WHERE course_id = ?
+      ORDER BY created_at DESC
+    `;
+    
+    const orders = await query(sql, [courseId]);
+    return orders;
+  } catch (error) {
+    console.error(`Error fetching detailed orders for course ${courseId}:`, error);
+    return [];
+  }
+};
+
 // Create a new order
 export const createOrder = async (order: {
   courseId: string;
@@ -419,6 +437,49 @@ export const createOrder = async (order: {
       ...order,
       created_at: new Date().toISOString()
     };
+  }
+};
+
+// Get all orders for admin dashboard
+export const getAllOrders = async (): Promise<any[]> => {
+  try {
+    const sql = `
+      SELECT co.*, c.title, c.title_ar 
+      FROM course_orders co
+      JOIN courses c ON co.course_id = c.id
+      ORDER BY co.created_at DESC
+    `;
+    
+    const orders = await query(sql);
+    return orders;
+  } catch (error) {
+    console.error('Error fetching all orders:', error);
+    return [];
+  }
+};
+
+// Update order status
+export const updateOrderStatus = async (orderId: number, status: string): Promise<void> => {
+  try {
+    const sql = `
+      UPDATE course_orders
+      SET status = ?
+      WHERE id = ?
+    `;
+    
+    await execute(sql, [status, orderId]);
+  } catch (error) {
+    console.error(`Error updating order status for order ${orderId}:`, error);
+  }
+};
+
+// Delete an order
+export const deleteOrder = async (orderId: number): Promise<void> => {
+  try {
+    const sql = `DELETE FROM course_orders WHERE id = ?`;
+    await execute(sql, [orderId]);
+  } catch (error) {
+    console.error(`Error deleting order ${orderId}:`, error);
   }
 };
 
@@ -464,6 +525,37 @@ export const createCoursesTables = async (): Promise<void> => {
         status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+      )
+    `);
+    
+    // Course content sections table
+    await execute(`
+      CREATE TABLE IF NOT EXISTS course_sections (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        course_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        title_ar VARCHAR(255) NOT NULL,
+        order_num INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+      )
+    `);
+    
+    // Course lectures table
+    await execute(`
+      CREATE TABLE IF NOT EXISTS course_lectures (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        section_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        title_ar VARCHAR(255) NOT NULL,
+        content TEXT,
+        content_ar TEXT,
+        video_url VARCHAR(255),
+        duration INT DEFAULT 0,
+        order_num INT DEFAULT 0,
+        is_free BOOLEAN DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (section_id) REFERENCES course_sections(id) ON DELETE CASCADE
       )
     `);
     
