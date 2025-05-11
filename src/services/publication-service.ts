@@ -18,6 +18,8 @@ export interface Publication {
   featured: boolean;
   created_at?: string;
   updated_at?: string;
+  // إضافة الحقل المفقود للمشروع المرتبط
+  relatedProjectId?: string;
 }
 
 // Interface for publications stored in MySQL
@@ -38,6 +40,7 @@ interface MySQLPublication {
   featured: number;
   created_at: string;
   updated_at: string;
+  related_project_id: string | null;
 }
 
 // Get all publications
@@ -66,7 +69,8 @@ export const getPublications = async (): Promise<Publication[]> => {
       image: pub.image || undefined,
       featured: pub.featured === 1,
       created_at: pub.created_at,
-      updated_at: pub.updated_at
+      updated_at: pub.updated_at,
+      relatedProjectId: pub.related_project_id || undefined
     }));
   } catch (error) {
     console.error('Error fetching publications:', error);
@@ -100,7 +104,8 @@ export const getPublication = async (id: string): Promise<Publication> => {
       image: pub.image || undefined,
       featured: pub.featured === 1,
       created_at: pub.created_at,
-      updated_at: pub.updated_at
+      updated_at: pub.updated_at,
+      relatedProjectId: pub.related_project_id || undefined
     };
   } catch (error) {
     console.error(`Error fetching publication ${id}:`, error);
@@ -151,7 +156,8 @@ export const getFeaturedPublications = async (limit: number = 3): Promise<Public
       image: pub.image || undefined,
       featured: pub.featured === 1,
       created_at: pub.created_at,
-      updated_at: pub.updated_at
+      updated_at: pub.updated_at,
+      relatedProjectId: pub.related_project_id || undefined
     }));
   } catch (error) {
     console.error('Error fetching featured publications:', error);
@@ -166,10 +172,10 @@ export const createPublication = async (publication: Omit<Publication, 'id'>): P
       INSERT INTO publications (
         title, title_ar, abstract, abstract_ar, 
         authors, authors_ar, published_in, published_in_ar, 
-        date, category, link, image, featured,
+        date, category, link, image, featured, related_project_id,
         created_at, updated_at
       ) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `;
     
     const result = await execute(sql, [
@@ -185,7 +191,8 @@ export const createPublication = async (publication: Omit<Publication, 'id'>): P
       publication.category,
       publication.link || null,
       publication.image || null,
-      publication.featured ? 1 : 0
+      publication.featured ? 1 : 0,
+      publication.relatedProjectId || null
     ]);
     
     return {
@@ -279,6 +286,11 @@ export const updatePublication = async (id: string, publication: Partial<Publica
       values.push(publication.featured ? 1 : 0);
     }
     
+    if (publication.relatedProjectId !== undefined) {
+      updates.push('related_project_id = ?');
+      values.push(publication.relatedProjectId || null);
+    }
+    
     updates.push('updated_at = NOW()');
     
     if (updates.length > 0) {
@@ -337,6 +349,7 @@ export const createPublicationsTables = async (): Promise<void> => {
         link VARCHAR(255),
         image VARCHAR(255),
         featured BOOLEAN DEFAULT 0,
+        related_project_id VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )

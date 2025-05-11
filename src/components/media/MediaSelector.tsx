@@ -10,10 +10,19 @@ export interface MediaSelectorProps {
   value?: string;
   onValueChange?: (value: string) => void;
   onChange?: (value: string) => void; // Add backward compatibility
+  onSelectMedia?: (url: string) => void; // إضافة خاصية الاختيار
+  onClose?: () => void; // إضافة خاصية الإغلاق
   type?: string;
 }
 
-export function MediaSelector({ value, onValueChange, onChange, type = "image" }: MediaSelectorProps) {
+export function MediaSelector({ 
+  value, 
+  onValueChange, 
+  onChange, 
+  onSelectMedia, 
+  onClose, 
+  type = "image" 
+}: MediaSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value || "");
 
@@ -21,11 +30,13 @@ export function MediaSelector({ value, onValueChange, onChange, type = "image" }
   const handleChange = (url: string) => {
     if (onChange) onChange(url);
     if (onValueChange) onValueChange(url);
+    if (onSelectMedia) onSelectMedia(url);
   };
 
   const handleSelect = (url: string) => {
     handleChange(url);
     setIsOpen(false);
+    if (onClose) onClose();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,6 +45,13 @@ export function MediaSelector({ value, onValueChange, onChange, type = "image" }
 
   const handleInputConfirm = () => {
     handleChange(inputValue);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open && onClose) {
+      onClose();
+    }
   };
 
   return (
@@ -50,7 +68,7 @@ export function MediaSelector({ value, onValueChange, onChange, type = "image" }
         )}
 
         <div className="flex gap-2">
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button type="button" variant="outline" className="w-full">
                 <ImageIcon className="h-4 w-4 mr-2" />
