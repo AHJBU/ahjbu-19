@@ -1,4 +1,3 @@
-
 // This service handles static content that can be edited from the dashboard
 // without requiring a database connection
 
@@ -39,6 +38,9 @@ export interface HomePageContent {
   heroButtonText: string;
   heroButtonTextAr: string;
   heroButtonLink: string;
+  profileImage: string;
+  profileImageAnimation: boolean;
+  textAnimation: boolean;
 }
 
 export interface FooterContent {
@@ -57,10 +59,10 @@ const KEYS = {
 
 // Default values
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  siteTitle: 'My Portfolio',
-  siteTitleAr: 'موقعي الشخصي',
-  siteDescription: 'Personal portfolio and blog',
-  siteDescriptionAr: 'موقع شخصي ومدونة',
+  siteTitle: 'Ahmed Jamal',
+  siteTitleAr: 'أحمد جمال',
+  siteDescription: 'Digital Professional',
+  siteDescriptionAr: 'محترف رقمي',
   logo: '/logo.svg',
   contactEmail: 'contact@example.com',
   socialLinks: {
@@ -82,14 +84,17 @@ const DEFAULT_ABOUT_CONTENT: AboutContent = {
 };
 
 const DEFAULT_HOME_PAGE_CONTENT: HomePageContent = {
-  heroTitle: 'Welcome to My Portfolio',
-  heroTitleAr: 'مرحبا بكم في موقعي',
-  heroSubtitle: 'Explore my projects and articles',
-  heroSubtitleAr: 'استكشف مشاريعي ومقالاتي',
+  heroTitle: 'Ahmed Jamal',
+  heroTitleAr: 'أحمد جمال',
+  heroSubtitle: 'Expert in social media, graphic design, web development, and training',
+  heroSubtitleAr: 'خبير في وسائل التواصل الاجتماعي، التصميم الجرافيكي، تطوير الويب، والتدريب',
   heroImage: '/placeholder.svg',
-  heroButtonText: 'View Projects',
-  heroButtonTextAr: 'عرض المشاريع',
-  heroButtonLink: '/projects'
+  heroButtonText: 'View My Work',
+  heroButtonTextAr: 'عرض أعمالي',
+  heroButtonLink: '/projects',
+  profileImage: '/lovable-uploads/6942ebb7-5a13-497a-9a04-a83ac399eabf.png',
+  profileImageAnimation: true,
+  textAnimation: true
 };
 
 const DEFAULT_FOOTER_CONTENT: FooterContent = {

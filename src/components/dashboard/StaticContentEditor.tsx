@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { MediaSelector } from "@/components/media/MediaSelector";
@@ -405,13 +406,44 @@ export function StaticContentEditor() {
               </div>
             </div>
             
-            <div>
-              <Label>{language === "en" ? "Hero Image" : "صورة البطاقة الرئيسية"}</Label>
-              <MediaSelector
-                value={home.heroImage}
-                onChange={(url) => setHome({...home, heroImage: url})}
-                type="image"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label>{language === "en" ? "Profile Image" : "الصورة الشخصية"}</Label>
+                <MediaSelector
+                  value={home.profileImage}
+                  onChange={(url) => setHome({...home, profileImage: url})}
+                  type="image"
+                />
+                <div className="flex items-center space-x-2 mt-2 rtl:space-x-reverse">
+                  <Switch
+                    id="profileImageAnimation"
+                    checked={home.profileImageAnimation}
+                    onCheckedChange={(checked) => setHome({...home, profileImageAnimation: checked})}
+                  />
+                  <Label htmlFor="profileImageAnimation">
+                    {language === "en" ? "Enable image animation" : "تفعيل حركة الصورة"}
+                  </Label>
+                </div>
+              </div>
+              
+              <div>
+                <Label>{language === "en" ? "Hero Background Image" : "صورة خلفية البطاقة الرئيسية"}</Label>
+                <MediaSelector
+                  value={home.heroImage}
+                  onChange={(url) => setHome({...home, heroImage: url})}
+                  type="image"
+                />
+                <div className="flex items-center space-x-2 mt-2 rtl:space-x-reverse">
+                  <Switch
+                    id="textAnimation"
+                    checked={home.textAnimation}
+                    onCheckedChange={(checked) => setHome({...home, textAnimation: checked})}
+                  />
+                  <Label htmlFor="textAnimation">
+                    {language === "en" ? "Enable text animation" : "تفعيل حركة النص"}
+                  </Label>
+                </div>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

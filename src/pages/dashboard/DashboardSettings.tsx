@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useLanguage } from "@/context/LanguageContext";
@@ -8,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LoaderCircle, Settings, User, Shield, Globe, Languages, Sparkles } from "lucide-react";
+import { LoaderCircle, Settings, User, Shield, Globe, Languages, Sparkles, Home } from "lucide-react";
 import { Link } from "react-router-dom";
+import { StaticContentEditor } from "@/components/dashboard/StaticContentEditor";
 
 const DashboardSettings = () => {
   const { language } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
   
   const handleSave = () => {
     setIsLoading(true);
@@ -30,7 +31,7 @@ const DashboardSettings = () => {
         { label: language === "en" ? "Settings" : "الإعدادات", href: "/dashboard/settings" }
       ]}
     >
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="general">
             <Settings className="h-4 w-4 mr-2" />
@@ -47,6 +48,10 @@ const DashboardSettings = () => {
           <TabsTrigger value="appearance">
             <Globe className="h-4 w-4 mr-2" />
             {language === "en" ? "Appearance" : "المظهر"}
+          </TabsTrigger>
+          <TabsTrigger value="content">
+            <Home className="h-4 w-4 mr-2" />
+            {language === "en" ? "Content" : "المحتوى"}
           </TabsTrigger>
         </TabsList>
         
@@ -145,7 +150,7 @@ const DashboardSettings = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="account">
+        <TabsContent value="account" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>{language === "en" ? "Account Settings" : "إعدادات الحساب"}</CardTitle>
@@ -169,7 +174,7 @@ const DashboardSettings = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="security">
+        <TabsContent value="security" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>{language === "en" ? "Security Settings" : "إعدادات الأمان"}</CardTitle>
@@ -207,7 +212,7 @@ const DashboardSettings = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="appearance">
+        <TabsContent value="appearance" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>{language === "en" ? "Appearance Settings" : "إعدادات المظهر"}</CardTitle>
@@ -260,20 +265,26 @@ const DashboardSettings = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        
+        <TabsContent value="content" className="space-y-6">
+          <StaticContentEditor />
+        </TabsContent>
       </Tabs>
       
-      <div className="flex justify-end mt-6">
-        <Button onClick={handleSave} disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-              {language === "en" ? "Saving..." : "جارِ الحفظ..."}
-            </>
-          ) : (
-            language === "en" ? "Save Settings" : "حفظ الإعدادات"
-          )}
-        </Button>
-      </div>
+      {activeTab !== "content" && (
+        <div className="flex justify-end mt-6">
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                {language === "en" ? "Saving..." : "جارِ الحفظ..."}
+              </>
+            ) : (
+              language === "en" ? "Save Settings" : "حفظ الإعدادات"
+            )}
+          </Button>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
