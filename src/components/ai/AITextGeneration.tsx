@@ -1,237 +1,209 @@
-
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateText, generateImageDescription, generateSEOSuggestions } from "@/services/ai-service";
-import { useLanguage } from "@/context/LanguageContext";
-import { toast } from "@/components/ui/use-toast";
-import { CodeBlock, Text, LoaderCircle, Image, BarChart } from "lucide-react";
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/use-toast';
+import { Clipboard, Code, Wand2, Copy, Check } from 'lucide-react';
 
 interface AITextGenerationProps {
-  title?: string;
-  onGenerate: (generatedText: string) => void;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  prompt: string;
+  seedText: string;
 }
 
-export const AITextGeneration = ({ title = "", onGenerate }: AITextGenerationProps) => {
-  const { language } = useLanguage();
-  const [prompt, setPrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState("");
-  const [activeTab, setActiveTab] = useState("content");
+export const AITextGeneration: React.FC<AITextGenerationProps> = ({ title, description, icon, prompt, seedText }) => {
+  const [generatedText, setGeneratedText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isApiKeySet, setIsApiKeySet] = useState(false);
+  const [apiKey, setApiKey] = useState('');
   const [temperature, setTemperature] = useState(0.7);
+  const [maxTokens, setMaxTokens] = useState(200);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
 
-  const generateContent = async (contentType: string) => {
-    if (!prompt) {
+  const generateText = async () => {
+    if (!apiKey) {
       toast({
-        title: language === "en" ? "Empty prompt" : "النص فارغ",
-        description: language === "en" 
-          ? "Please enter a prompt first." 
-          : "الرجاء إدخال نص أولاً.",
-        variant: "destructive",
+        title: 'API Key Required',
+        description: 'Please set your OpenAI API key in the settings.',
+        variant: 'destructive',
       });
       return;
     }
 
-    setIsGenerating(true);
+    setIsLoading(true);
+    setGeneratedText('');
+
     try {
-      let text = "";
-      
-      if (contentType === "content") {
-        text = await generateText({
-          prompt: `Write a detailed blog post about: ${prompt}. 
-          ${title ? `The blog title is: ${title}.` : ""} 
-          Make it engaging, informative, and well-structured with appropriate headings and paragraphs.`,
-          temperature
-        });
-      } else if (contentType === "image-description") {
-        text = await generateImageDescription(prompt);
-      } else if (contentType === "seo") {
-        text = await generateSEOSuggestions(title || prompt, generatedContent || prompt);
+      const response = await fetch('https://api.openai.com/v1/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'text-davinci-003',
+          prompt: `${prompt}\n${seedText}`,
+          max_tokens: maxTokens,
+          temperature: temperature,
+          stream: isStreaming,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
       }
 
-      setGeneratedContent(text);
+      if (isStreaming) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let chunkText = '';
+
+        while (true) {
+          const { done, value } = await reader!.read();
+          if (done) {
+            break;
+          }
+
+          chunkText += decoder.decode(value);
+          try {
+            const parsedChunk = JSON.parse(chunkText);
+            if (parsedChunk.choices && parsedChunk.choices[0].text) {
+              setGeneratedText((prevText) => prevText + parsedChunk.choices[0].text);
+            }
+            chunkText = ''; // Reset chunk after successful parse
+          } catch (error) {
+            // Collect incomplete JSON chunks
+          }
+        }
+      } else {
+        const data = await response.json();
+        setGeneratedText(data.choices[0].text);
+      }
+    } catch (error: any) {
       toast({
-        title: language === "en" ? "Content generated" : "تم إنشاء المحتوى",
-        description: language === "en" 
-          ? "AI content has been generated successfully." 
-          : "تم إنشاء محتوى الذكاء الاصطناعي بنجاح.",
-      });
-    } catch (error) {
-      console.error('Content generation error:', error);
-      toast({
-        title: language === "en" ? "Generation failed" : "فشل الإنشاء",
-        description: typeof error === 'string' 
-          ? error 
-          : language === "en" 
-            ? "Failed to generate content. Check AI settings." 
-            : "فشل إنشاء المحتوى. تحقق من إعدادات الذكاء الاصطناعي.",
-        variant: "destructive",
+        title: 'Error generating text',
+        description: error.message,
+        variant: 'destructive',
       });
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
-  const handleUseGenerated = () => {
-    if (generatedContent) {
-      onGenerate(generatedContent);
-      toast({
-        description: language === "en" 
-          ? "Generated content has been applied." 
-          : "تم تطبيق المحتوى الذي تم إنشاؤه."
-      });
-    }
-  };
+  const handleCopyClick = () => {
+    navigator.clipboard.writeText(generatedText);
+    setCopied(true);
+    toast({
+      title: 'Copied to clipboard!',
+      description: 'The generated text has been copied to your clipboard.',
+    });
 
-  const getContentIcon = () => {
-    switch (activeTab) {
-      case "content":
-        return <CodeBlock className="h-4 w-4 mr-2" />;
-      case "image-description":
-        return <Image className="h-4 w-4 mr-2" />;
-      case "seo":
-        return <BarChart className="h-4 w-4 mr-2" />;
-      default:
-        return <Text className="h-4 w-4 mr-2" />;
-    }
-  };
-  
-  const getContentButtonText = () => {
-    if (isGenerating) {
-      return language === "en" ? "Generating..." : "جاري الإنشاء...";
-    }
-    
-    switch (activeTab) {
-      case "content":
-        return language === "en" ? "Generate Content" : "إنشاء محتوى";
-      case "image-description":
-        return language === "en" ? "Generate Image Description" : "إنشاء وصف صورة";
-      case "seo":
-        return language === "en" ? "Generate SEO Suggestions" : "إنشاء اقتراحات SEO";
-      default:
-        return language === "en" ? "Generate" : "إنشاء";
-    }
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>
-          {language === "en" ? "AI Content Generator" : "منشئ المحتوى الذكي"}
-        </CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="flex items-center space-x-2">
+          {icon}
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        </div>
+        <Clipboard className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="content">
-              <CodeBlock className="h-4 w-4 mr-2" />
-              {language === "en" ? "Content" : "محتوى"}
+        <CardDescription className="text-muted-foreground text-sm">
+          {description}
+        </CardDescription>
+        <Tabs defaultValue="settings" className="mt-4">
+          <TabsList>
+            <TabsTrigger value="settings" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+              <Wand2 className="h-4 w-4 mr-2" /> Settings
             </TabsTrigger>
-            <TabsTrigger value="image-description">
-              <Image className="h-4 w-4 mr-2" />
-              {language === "en" ? "Image Description" : "وصف الصورة"}
-            </TabsTrigger>
-            <TabsTrigger value="seo">
-              <BarChart className="h-4 w-4 mr-2" />
-              {language === "en" ? "SEO Tips" : "نصائح SEO"}
+            <TabsTrigger value="prompt" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+              <Code className="h-4 w-4 mr-2" /> Prompt
             </TabsTrigger>
           </TabsList>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="prompt">
-                {language === "en" ? "Prompt" : "النص التوجيهي"}
-              </Label>
-              <Textarea
-                id="prompt"
-                placeholder={
-                  activeTab === "content"
-                    ? language === "en"
-                      ? "Describe the content you want to generate..."
-                      : "صف المحتوى الذي تريد إنشاءه..."
-                    : activeTab === "image-description"
-                    ? language === "en"
-                      ? "Describe the image you want to generate description for..."
-                      : "صف الصورة التي تريد إنشاء وصف لها..."
-                    : language === "en"
-                    ? "Enter a topic for SEO suggestions..."
-                    : "أدخل موضوعًا للحصول على اقتراحات SEO..."
-                }
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                rows={3}
-                className="mt-1"
-              />
-            </div>
-
-            {activeTab === "content" && (
+          <TabsContent value="settings" className="space-y-2">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <Label htmlFor="temperature">
-                    {language === "en" ? "Creativity Level" : "مستوى الإبداع"}
-                  </Label>
-                  <span className="text-sm">{temperature.toFixed(1)}</span>
-                </div>
-                <Slider
-                  id="temperature"
-                  min={0.1}
-                  max={1}
-                  step={0.1}
-                  value={[temperature]}
-                  onValueChange={(value) => setTemperature(value[0])}
+                <Label htmlFor="apiKey">OpenAI API Key</Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
                 />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>{language === "en" ? "Focused" : "مركّز"}</span>
-                  <span>{language === "en" ? "Balanced" : "متوازن"}</span>
-                  <span>{language === "en" ? "Creative" : "إبداعي"}</span>
-                </div>
               </div>
-            )}
-
-            <div className="flex justify-between gap-2">
-              <Button 
-                onClick={() => generateContent(activeTab)} 
-                disabled={isGenerating || !prompt}
-                className="flex-1"
-              >
-                {isGenerating ? (
-                  <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  getContentIcon()
-                )}
-                {getContentButtonText()}
-              </Button>
-            </div>
-          </div>
-
-          {generatedContent && (
-            <div className="mt-6 space-y-4">
-              <div className="border rounded-md p-4 bg-muted/40">
-                <Label className="mb-2 block">
-                  {language === "en" ? "Generated Content" : "المحتوى الذي تم إنشاؤه"}
-                </Label>
-                <div className="prose max-w-none dark:prose-invert whitespace-pre-wrap">
-                  {generatedContent}
-                </div>
+              <div>
+                <Label htmlFor="temperature">Temperature</Label>
+                <Input
+                  id="temperature"
+                  type="number"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  min="0"
+                  max="1"
+                  step="0.1"
+                />
               </div>
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleUseGenerated}
-                  variant="secondary"
-                >
-                  {language === "en" ? "Use This Content" : "استخدام هذا المحتوى"}
-                </Button>
+              <div>
+                <Label htmlFor="maxTokens">Max Tokens</Label>
+                <Input
+                  id="maxTokens"
+                  type="number"
+                  value={maxTokens}
+                  onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+                  min="50"
+                  max="500"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="stream"
+                  checked={isStreaming}
+                  onCheckedChange={(checked) => setIsStreaming(checked)}
+                />
+                <Label htmlFor="stream">Stream</Label>
               </div>
             </div>
-          )}
+          </TabsContent>
+          <TabsContent value="prompt">
+            <Textarea
+              placeholder="Enter your prompt here."
+              value={prompt}
+              className="min-h-[100px]"
+              readOnly
+            />
+          </TabsContent>
         </Tabs>
+        <Textarea
+          placeholder="Generated text will appear here."
+          value={generatedText}
+          className="mt-4 min-h-[150px]"
+          readOnly
+        />
       </CardContent>
+      <CardFooter className="justify-between">
+        <Button onClick={generateText} disabled={isLoading}>
+          {isLoading ? 'Generating...' : 'Generate'}
+        </Button>
+        <Button variant="secondary" onClick={handleCopyClick} disabled={copied || !generatedText}>
+          {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+          {copied ? 'Copied!' : 'Copy'}
+        </Button>
+      </CardFooter>
     </Card>
   );
 };

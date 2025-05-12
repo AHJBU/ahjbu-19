@@ -1,192 +1,158 @@
-
-import { useState, useRef } from 'react';
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Upload, X, File, AlertCircle } from "lucide-react";
-import { useLanguage } from "@/context/LanguageContext";
-import { toast } from "@/components/ui/use-toast";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { app } from '@/lib/firebase';
+import React, { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
+import { toast } from '@/components/ui/use-toast';
+import { Upload, X, Check, AlertCircle, FileImage } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 interface MediaUploaderProps {
-  onUploadComplete?: (url: string) => void;
-  folder?: string;
-  acceptedTypes?: string;
+  onUploadComplete: (url: string) => void;
+  onError?: (message: string) => void;
 }
 
-export function MediaUploader({ onUploadComplete, folder = "images", acceptedTypes = "image/*" }: MediaUploaderProps) {
-  const { language } = useLanguage();
-  const [isUploading, setIsUploading] = useState(false);
+const MediaUploader: React.FC<MediaUploaderProps> = ({ onUploadComplete, onError }) => {
+  const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const storage = getStorage(app);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setError(null);
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Validate file type if acceptedTypes is provided
-      if (acceptedTypes && !file.type.match(acceptedTypes.replace(/\*/g, '.*'))) {
-        setError(language === 'en' 
-          ? `Invalid file type. Please upload ${acceptedTypes}.` 
-          : `نوع ملف غير صالح. يرجى تحميل ${acceptedTypes}.`);
-        return;
-      }
-      
-      // Validate file size (limit to 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        setError(language === 'en' 
-          ? 'File is too large. Maximum size is 10MB.' 
-          : 'الملف كبير جداً. الحد الأقصى هو 10 ميجابايت.');
-        return;
-      }
-      
-      setSelectedFile(file);
-    }
-  };
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    setFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  }, []);
 
-  const handleClearFile = () => {
-    setSelectedFile(null);
-    setError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: 'image/*, video/*',
+    maxFiles: 1,
+    multiple: false,
+  });
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
-    setError(null);
-    setIsUploading(true);
+    if (!file) {
+      toast({
+        title: 'Error',
+        description: 'Please select a file to upload.',
+        variant: 'destructive',
+      });
+      onError?.('Please select a file to upload.');
+      return;
+    }
+
+    setUploading(true);
     setProgress(0);
 
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `media/${fileName}`;
+
     try {
-      // Create file path in Firebase Storage
-      const timestamp = Date.now();
-      const fileExtension = selectedFile.name.split('.').pop() || '';
-      const fileName = `${timestamp}-${selectedFile.name.replace(`.${fileExtension}`, '')}.${fileExtension}`;
-      const filePath = `${folder}/${fileName}`;
-      const storageRef = ref(storage, filePath);
-      
-      // Create upload task
-      const uploadTask = uploadBytesResumable(storageRef, selectedFile);
-      
-      // Monitor upload progress
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          setProgress(progress);
-        },
-        (error) => {
-          console.error('Upload error:', error);
-          setError(language === 'en' 
-            ? 'Error uploading file. Please try again.' 
-            : 'خطأ في تحميل الملف. يرجى المحاولة مرة أخرى.');
-          setIsUploading(false);
-        },
-        async () => {
-          // Upload complete
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            if (onUploadComplete) {
-              onUploadComplete(downloadURL);
-            }
-            toast({
-              title: language === 'en' ? 'Upload Complete' : 'تم التحميل',
-              description: language === 'en' 
-                ? `${selectedFile.name} has been uploaded successfully.` 
-                : `تم تحميل ${selectedFile.name} بنجاح.`,
-            });
-            setSelectedFile(null);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = '';
-            }
-          } catch (error) {
-            console.error('Error getting download URL:', error);
-            setError(language === 'en' 
-              ? 'Error getting download URL. Please try again.' 
-              : 'خطأ في الحصول على عنوان URL للتنزيل. يرجى المحاولة مرة أخرى.');
-          }
-          setIsUploading(false);
-        }
-      );
-    } catch (error) {
-      console.error('Upload setup error:', error);
-      setError(language === 'en' 
-        ? 'Error setting up upload. Please try again.' 
-        : 'خطأ في إعداد التحميل. يرجى المحاولة مرة أخرى.');
-      setIsUploading(false);
+      const { data, error } = await supabase.storage
+        .from('media')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (error) {
+        console.error('Error uploading file:', error);
+        toast({
+          title: 'Upload Failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+        onError?.(error.message);
+        setUploading(false);
+        return;
+      }
+
+      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
+      onUploadComplete(url);
+      toast({
+        title: 'Upload Successful',
+        description: 'File uploaded successfully!',
+      });
+    } catch (error: any) {
+      console.error('Unexpected error during upload:', error);
+      toast({
+        title: 'Upload Failed',
+        description: error.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+      onError?.(error.message || 'An unexpected error occurred.');
+    } finally {
+      setUploading(false);
+      setProgress(0);
     }
+  };
+
+  const handleCancel = () => {
+    setFile(null);
+    setPreviewUrl(null);
   };
 
   return (
-    <div className="space-y-4">
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>
-            {language === 'en' ? 'Error' : 'خطأ'}
-          </AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          {language === 'en' ? 'Select File' : 'اختر ملف'}
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileChange}
-            accept={acceptedTypes}
-            disabled={isUploading}
-          />
-        </Button>
-        
-        {selectedFile && !isUploading && (
-          <Button 
-            variant="default"
-            onClick={handleUpload}
-          >
-            {language === 'en' ? 'Upload' : 'رفع'}
-          </Button>
-        )}
-      </div>
-
-      {selectedFile && (
-        <div className="flex items-center gap-2 text-sm bg-muted p-2 rounded">
-          <File className="h-4 w-4 flex-shrink-0" />
-          <div className="flex-1 truncate">{selectedFile.name}</div>
-          {!isUploading && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleClearFile}
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      )}
-
-      {isUploading && (
-        <div className="space-y-2">
-          <Progress value={progress} />
-          <div className="text-xs text-right text-muted-foreground">
-            {progress}%
+    <Card>
+      <CardContent className="flex flex-col space-y-4">
+        <div {...getRootProps()} className={`relative border-2 border-dashed rounded-md p-6 cursor-pointer ${isDragActive ? 'border-primary' : 'border-muted'}`}>
+          <input {...getInputProps()} />
+          <div className="text-center">
+            {file ? (
+              <>
+                {file.type.startsWith('image/') ? (
+                  <img src={previewUrl!} alt="Preview" className="max-h-48 mx-auto rounded-md" />
+                ) : (
+                  <div className="flex items-center justify-center h-48 bg-muted rounded-md">
+                    <FileImage className="h-12 w-12 text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">{file.name}</span>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground mt-2">
+                  {file.name} - {(file.size / 1024).toFixed(2)} KB
+                </p>
+              </>
+            ) : (
+              <>
+                <Upload className="w-6 h-6 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  {isDragActive ? 'Drop the file here...' : 'Click or drag a file to upload'}
+                </p>
+              </>
+            )}
           </div>
         </div>
-      )}
-    </div>
+
+        {uploading && (
+          <Progress value={progress} className="w-full" />
+        )}
+
+        <div className="flex justify-end space-x-2">
+          {file && (
+            <Button variant="ghost" onClick={handleCancel} disabled={uploading}>
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+          )}
+          <Button onClick={handleUpload} disabled={uploading || !file}>
+            {uploading ? (
+              <>
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
-}
+};
+
+export default MediaUploader;
