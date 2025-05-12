@@ -51,14 +51,24 @@ export const WordPressImporter = ({ onImport }: WordPressImporterProps) => {
       const postSlug = pathSegments[pathSegments.length - 1];
       const domain = urlObj.origin;
       
-      // Try to fetch WordPress post using REST API
-      const response = await fetch(`${domain}/wp-json/wp/v2/posts?slug=${postSlug}`);
+      console.log('Fetching from WordPress API:', `${domain}/wp-json/wp/v2/posts?slug=${postSlug}`);
+      
+      // Create a proxy URL to avoid CORS issues
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`${domain}/wp-json/wp/v2/posts?slug=${postSlug}`)}`;
+      
+      const response = await fetch(proxyUrl);
       
       if (!response.ok) {
         throw new Error('Failed to fetch WordPress post');
       }
       
-      const posts = await response.json();
+      const data = await response.json();
+      
+      if (!data.contents) {
+        throw new Error('No content returned from proxy');
+      }
+      
+      const posts = JSON.parse(data.contents);
       
       if (!posts || posts.length === 0) {
         throw new Error('No posts found with this URL');
@@ -69,9 +79,11 @@ export const WordPressImporter = ({ onImport }: WordPressImporterProps) => {
       // Get featured image if available
       let featuredMediaUrl = undefined;
       if (post.featured_media) {
-        const mediaResponse = await fetch(`${domain}/wp-json/wp/v2/media/${post.featured_media}`);
+        const mediaProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`${domain}/wp-json/wp/v2/media/${post.featured_media}`)}`;
+        const mediaResponse = await fetch(mediaProxyUrl);
         if (mediaResponse.ok) {
-          const media = await mediaResponse.json();
+          const mediaData = await mediaResponse.json();
+          const media = JSON.parse(mediaData.contents);
           featuredMediaUrl = media.source_url;
         }
       }
@@ -79,14 +91,15 @@ export const WordPressImporter = ({ onImport }: WordPressImporterProps) => {
       // Get tags
       const tags: string[] = [];
       if (post.tags && post.tags.length > 0) {
-        const tagsPromises = post.tags.map((tagId: number) => 
-          fetch(`${domain}/wp-json/wp/v2/tags/${tagId}`)
-            .then(res => res.json())
-            .then(tag => tag.name)
-        );
-        
-        const resolvedTags = await Promise.all(tagsPromises);
-        tags.push(...resolvedTags);
+        for (const tagId of post.tags) {
+          const tagProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`${domain}/wp-json/wp/v2/tags/${tagId}`)}`;
+          const tagResponse = await fetch(tagProxyUrl);
+          if (tagResponse.ok) {
+            const tagData = await tagResponse.json();
+            const tag = JSON.parse(tagData.contents);
+            tags.push(tag.name);
+          }
+        }
       }
       
       // Process the post content

@@ -1,131 +1,117 @@
 
-import { useState } from "react";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { useLanguage } from "@/context/LanguageContext";
-import { projects } from "@/data/projects";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import Layout from '@/components/Layout';
+import { useLanguage } from '@/context/LanguageContext';
+import { ProjectType } from '@/data/projects';
+import { getProjects } from '@/services/supabase-service';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExternalLink } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 const Projects = () => {
-  const { language, t } = useLanguage();
-  const [filter, setFilter] = useState<string | null>(null);
+  const { language } = useLanguage();
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const pageTitle = language === 'en' ? 'Projects' : 'المشاريع';
 
-  // Extract unique tags from projects
-  const uniqueTags = Array.from(
-    new Set(projects.flatMap(project => project.tags))
-  ).sort();
+  const { data: projects = [], isLoading } = useQuery({
+    queryKey: ['projects'],
+    queryFn: getProjects
+  });
 
-  // Filter projects based on selected filter
-  const filteredProjects = filter
-    ? projects.filter(project => project.tags.includes(filter))
-    : projects;
+  // Extract unique categories from projects
+  const categories = ["all", ...new Set(projects.map(project => project.category))];
+
+  // Filter projects based on active category
+  const filteredProjects = activeCategory === "all"
+    ? projects
+    : projects.filter(project => project.category === activeCategory);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-grow pt-16">
-        <section className="py-20">
-          <div className="container mx-auto px-4">
-            <div className="max-w-2xl mx-auto text-center mb-12">
-              <h1 className="text-4xl font-bold mb-4">
-                {language === "en" ? "Projects" : "المشاريع"}
-              </h1>
-              <p className="text-muted-foreground">
-                {language === "en" 
-                  ? "Explore a collection of my recent work and personal projects." 
-                  : "استكشف مجموعة من أعمالي الحديثة ومشاريعي الشخصية."
-                }
-              </p>
-            </div>
+    <Layout pageTitle={pageTitle}>
+      <div className="container mx-auto py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4">{pageTitle}</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            {language === 'en'
+              ? 'Explore my recent projects and work spanning various technologies and domains.'
+              : 'استكشف مشاريعي الحديثة والأعمال التي تمتد عبر مختلف التقنيات والمجالات.'}
+          </p>
+        </div>
 
-            {/* Filters */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
-              <Button
-                variant={filter === null ? "default" : "outline"}
-                onClick={() => setFilter(null)}
-                size="sm"
-              >
-                {language === "en" ? "All" : "الكل"}
-              </Button>
-
-              {uniqueTags.map((tag) => (
-                <Button
-                  key={tag}
-                  variant={filter === tag ? "default" : "outline"}
-                  onClick={() => setFilter(tag)}
-                  size="sm"
-                >
-                  {tag}
-                </Button>
+        <Tabs defaultValue="all" className="w-full mb-12" onValueChange={setActiveCategory}>
+          <div className="flex justify-center mb-8">
+            <TabsList className="w-fit">
+              {categories.map((category) => (
+                <TabsTrigger key={category} value={category} className="capitalize">
+                  {language === 'en' ? category : category === 'all' ? 'الكل' : category}
+                </TabsTrigger>
               ))}
-            </div>
+            </TabsList>
+          </div>
+        </Tabs>
 
-            {/* Projects grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredProjects.map((project) => (
-                <div 
-                  key={project.id} 
-                  className="group relative bg-card border rounded-xl overflow-hidden transition-all hover:shadow-lg animate-fade-in"
-                >
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredProjects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredProjects.map((project) => (
+              <Card key={project.id} className="overflow-hidden flex flex-col">
+                {project.image && (
                   <div className="aspect-video w-full overflow-hidden">
-                    <img 
-                      src={project.image} 
-                      alt={language === "en" ? project.title : project.titleAr}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    <img
+                      src={project.image}
+                      alt={language === 'en' ? project.title : project.titleAr}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                     />
                   </div>
-                  
-                  <div className="p-6 space-y-4">
-                    <h3 className="text-xl font-semibold">
-                      {language === "en" ? project.title : project.titleAr}
+                )}
+                <CardContent className="p-6 flex flex-col flex-grow">
+                  <div className="mb-4">
+                    <Badge variant="outline" className="mb-2">
+                      {project.category}
+                    </Badge>
+                    <h3 className="text-xl font-bold mb-2">
+                      {language === 'en' ? project.title : project.titleAr}
                     </h3>
-                    
-                    <p className="text-muted-foreground text-sm line-clamp-3">
-                      {language === "en" ? project.description : project.descriptionAr}
+                    <p className="text-muted-foreground line-clamp-3">
+                      {language === 'en' ? project.description : project.descriptionAr}
                     </p>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {project.tags.slice(0, 3).map((tag) => (
-                        <span 
-                          key={tag} 
-                          className="px-2 py-1 bg-muted rounded-full text-xs"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {project.tags.length > 3 && (
-                        <span className="px-2 py-1 bg-muted rounded-full text-xs">
-                          +{project.tags.length - 3}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <Button asChild size="sm">
-                      <Link to={`/projects/${project.id}`}>
-                        {t("viewProject")}
-                      </Link>
+                  </div>
+                  <div className="mt-auto pt-4 flex gap-2">
+                    {project.link && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={project.link} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          {language === 'en' ? 'Visit Project' : 'زيارة المشروع'}
+                        </a>
+                      </Button>
+                    )}
+                    <Button size="sm" asChild>
+                      <a href={`/projects/${project.id}`}>
+                        {language === 'en' ? 'View Details' : 'عرض التفاصيل'}
+                      </a>
                     </Button>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {filteredProjects.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-lg text-muted-foreground">
-                  {language === "en" 
-                    ? "No projects match the selected filter." 
-                    : "لا توجد مشاريع تطابق الفلتر المحدد."
-                  }
-                </p>
-              </div>
-            )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </section>
-      </main>
-      <Footer />
-    </div>
+        ) : (
+          <div className="text-center py-16">
+            <p className="text-xl text-muted-foreground">
+              {language === 'en'
+                ? 'No projects found in this category.'
+                : 'لا توجد مشاريع في هذه الفئة.'}
+            </p>
+          </div>
+        )}
+      </div>
+    </Layout>
   );
 };
 

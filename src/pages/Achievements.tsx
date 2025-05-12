@@ -1,199 +1,205 @@
 
-import { useState } from "react";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { useLanguage } from "@/context/LanguageContext";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AchievementCard } from "@/components/achievements/AchievementCard";
-import { 
-  achievements, 
-  getAchievementsByYear, 
-  getAchievementCategories 
-} from "@/data/achievements";
-import { Award, Calendar, Filter, ExternalLink } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useState } from 'react';
+import Layout from '@/components/Layout';
+import { useLanguage } from '@/context/LanguageContext';
+import { Achievement } from '@/types/achievement';
+import { useQuery } from '@tanstack/react-query';
+import { getAchievements } from '@/services/achievement-service';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExternalLink, Award, Calendar } from 'lucide-react';
 
 const Achievements = () => {
   const { language } = useLanguage();
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [activeYear, setActiveYear] = useState<string | null>(null);
-  
-  const achievementsByYear = getAchievementsByYear();
-  const categories = getAchievementCategories();
-  
-  // Filter achievements based on selected category and year
-  const filteredAchievements = achievements.filter(achievement => {
-    if (activeFilter && achievement.category !== activeFilter) {
-      return false;
-    }
-    
-    if (activeYear && new Date(achievement.date).getFullYear().toString() !== activeYear) {
-      return false;
-    }
-    
-    return true;
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const pageTitle = language === 'en' ? 'Achievements & Awards' : 'الإنجازات والجوائز';
+
+  // Fetch achievements data
+  const { data: achievements = [], isLoading } = useQuery({
+    queryKey: ['achievements'],
+    queryFn: getAchievements
   });
 
+  // Get unique categories for filtering
+  const categories = ["all", ...new Set(achievements.map(item => item.category))];
+  
+  // Get unique years for timeline
+  const years = [...new Set(achievements.map(item => new Date(item.date).getFullYear()))]
+    .sort((a, b) => b - a);
+
+  // Filter achievements based on active filter
+  const filteredAchievements = activeFilter === "all" 
+    ? achievements 
+    : achievements.filter(item => item.category === activeFilter);
+
+  // Group achievements by year for timeline view
+  const achievementsByYear = years.reduce((acc, year) => {
+    acc[year] = filteredAchievements.filter(
+      item => new Date(item.date).getFullYear() === year
+    );
+    return acc;
+  }, {} as Record<number, Achievement[]>);
+
+  // Badge color based on category
+  const getBadgeColor = (category: string) => {
+    switch(category) {
+      case 'Award': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100';
+      case 'Certification': return 'bg-blue-100 text-blue-800 hover:bg-blue-100';
+      case 'Recognition': return 'bg-purple-100 text-purple-800 hover:bg-purple-100';
+      case 'Publication': return 'bg-green-100 text-green-800 hover:bg-green-100';
+      case 'Speaking': return 'bg-orange-100 text-orange-800 hover:bg-orange-100';
+      case 'Education': return 'bg-indigo-100 text-indigo-800 hover:bg-indigo-100';
+      default: return 'bg-gray-100 text-gray-800 hover:bg-gray-100';
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-grow pt-16">
-        <section className="py-20">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center mb-12">
-              <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-2">
-                <Award className="h-8 w-8 text-primary" />
-                {language === "en" ? "Achievements & Awards" : "الإنجازات والجوائز"}
-              </h1>
-              <p className="text-muted-foreground">
-                {language === "en"
-                  ? "A collection of professional achievements, certifications, awards, and recognition throughout my career."
-                  : "مجموعة من الإنجازات المهنية والشهادات والجوائز والتقديرات على مدار مسيرتي المهنية."
-                }
-              </p>
-            </div>
+    <Layout pageTitle={pageTitle}>
+      <div className="container mx-auto py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4">{pageTitle}</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            {language === 'en'
+              ? 'A timeline of professional achievements, awards, and milestones throughout my career.'
+              : 'جدول زمني للإنجازات المهنية والجوائز والمعالم البارزة خلال مسيرتي المهنية.'}
+          </p>
+        </div>
 
-            <div className="flex flex-col md:flex-row justify-between items-start mb-10 gap-6">
-              {/* Category filter */}
-              <div className="space-y-2 w-full md:w-auto">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <Filter className="h-4 w-4" />
-                  {language === "en" ? "Filter by category:" : "تصفية حسب الفئة:"}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    variant={activeFilter === null ? "secondary" : "outline"} 
-                    size="sm"
-                    onClick={() => setActiveFilter(null)}
-                  >
-                    {language === "en" ? "All" : "الكل"}
-                  </Button>
-                  
-                  {categories.map((category) => (
-                    <Button
-                      key={category}
-                      variant={activeFilter === category ? "secondary" : "outline"}
-                      size="sm"
-                      onClick={() => setActiveFilter(category)}
-                    >
-                      {category}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Year filter */}
-              <div className="space-y-2 w-full md:w-auto">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <Calendar className="h-4 w-4" />
-                  {language === "en" ? "Filter by year:" : "تصفية حسب السنة:"}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    variant={activeYear === null ? "secondary" : "outline"} 
-                    size="sm"
-                    onClick={() => setActiveYear(null)}
-                  >
-                    {language === "en" ? "All Years" : "كل السنوات"}
-                  </Button>
-                  
-                  {Object.keys(achievementsByYear).map((year) => (
-                    <Button
-                      key={year}
-                      variant={activeYear === year ? "secondary" : "outline"}
-                      size="sm"
-                      onClick={() => setActiveYear(year)}
-                    >
-                      {year}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
+        <Tabs defaultValue="all" className="w-full mb-12" onValueChange={setActiveFilter}>
+          <div className="flex justify-center mb-8">
+            <TabsList className="w-fit">
+              {categories.map((category) => (
+                <TabsTrigger key={category} value={category} className="capitalize">
+                  {language === 'en' 
+                    ? category === 'all' ? 'All' : category 
+                    : category === 'all' ? 'الكل' : 
+                      category === 'Award' ? 'جائزة' :
+                      category === 'Certification' ? 'شهادة' :
+                      category === 'Recognition' ? 'تقدير' :
+                      category === 'Publication' ? 'منشور' :
+                      category === 'Speaking' ? 'تحدث' :
+                      category === 'Education' ? 'تعليم' :
+                      category}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+        </Tabs>
 
-            {filteredAchievements.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredAchievements.map((achievement) => (
-                  <AchievementCard key={achievement.id} achievement={achievement} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20">
-                <p className="text-muted-foreground">
-                  {language === "en" 
-                    ? "No achievements match your filter criteria." 
-                    : "لا توجد إنجازات تطابق معايير التصفية."
-                  }
-                </p>
-              </div>
-            )}
-
-            {/* Timeline view */}
-            <div className="mt-24">
-              <h2 className="text-2xl font-bold text-center mb-12">
-                {language === "en" ? "Achievement Timeline" : "الجدول الزمني للإنجازات"}
-              </h2>
-              
-              <div className="space-y-16">
-                {Object.entries(achievementsByYear).map(([year, yearAchievements]) => (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredAchievements.length > 0 ? (
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-0.5 bg-muted"></div>
+            
+            {/* Timeline items */}
+            <div className="space-y-16">
+              {Object.entries(achievementsByYear).map(([year, yearAchievements]) => (
+                yearAchievements.length > 0 && (
                   <div key={year} className="relative">
-                    <div className="sticky top-20 bg-background z-10 py-4 mb-8 border-b">
-                      <h3 className="text-xl font-bold">{year}</h3>
+                    {/* Year marker */}
+                    <div className="absolute left-1/2 transform -translate-x-1/2 -mt-12">
+                      <div className="bg-background border border-border rounded-full px-6 py-2 text-2xl font-bold inline-block">
+                        {year}
+                      </div>
                     </div>
                     
-                    <div className="space-y-8">
-                      {yearAchievements.map((achievement) => (
-                        <div 
-                          key={achievement.id} 
-                          className="bg-card border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <div className="mb-4">
-                            <Badge className={`mb-2 ${
-                              achievement.category === "Award" ? "bg-yellow-500/10 text-yellow-500" :
-                              achievement.category === "Certification" ? "bg-blue-500/10 text-blue-500" :
-                              achievement.category === "Recognition" ? "bg-purple-500/10 text-purple-500" :
-                              achievement.category === "Speaking" ? "bg-green-500/10 text-green-500" :
-                              achievement.category === "Publication" ? "bg-red-500/10 text-red-500" :
-                              "bg-cyan-500/10 text-cyan-500"
-                            }`}>
-                              {achievement.category}
-                            </Badge>
-                            <h4 className="text-lg font-semibold">
-                              {language === "en" ? achievement.title : achievement.titleAr}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(achievement.date).toLocaleDateString(
-                                language === "en" ? "en-US" : "ar-SA",
-                                { year: "numeric", month: "long", day: "numeric" }
-                              )}
-                            </p>
+                    {/* Year achievements */}
+                    <div className="space-y-8 mt-6 pt-8">
+                      {yearAchievements.map((achievement, index) => (
+                        <div key={achievement.id} className={`flex items-start relative ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'}`}>
+                          {/* Achievement dot */}
+                          <div className="absolute left-1/2 transform -translate-x-1/2 w-5 h-5 rounded-full bg-primary"></div>
+                          
+                          {/* Achievement card */}
+                          <div className={`w-1/2 ${index % 2 === 0 ? 'pr-12' : 'pl-12'}`}>
+                            <Card className={`${index % 2 === 0 ? '' : 'items-end'} h-full`}>
+                              <CardHeader className="p-5 pb-3">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <Badge variant="outline" className={getBadgeColor(achievement.category)}>
+                                      {language === 'en' ? achievement.category : 
+                                        achievement.category === 'Award' ? 'جائزة' :
+                                        achievement.category === 'Certification' ? 'شهادة' :
+                                        achievement.category === 'Recognition' ? 'تقدير' :
+                                        achievement.category === 'Publication' ? 'منشور' :
+                                        achievement.category === 'Speaking' ? 'تحدث' :
+                                        achievement.category === 'Education' ? 'تعليم' :
+                                        achievement.category}
+                                    </Badge>
+                                    {achievement.featured && (
+                                      <Badge variant="secondary" className="ml-2">
+                                        <Award className="h-3 w-3 mr-1" />
+                                        {language === 'en' ? 'Featured' : 'مميز'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center text-sm text-muted-foreground">
+                                    <Calendar className="h-3.5 w-3.5 mr-1" />
+                                    {new Date(achievement.date).toLocaleDateString(
+                                      language === "en" ? undefined : "ar-SA", 
+                                      { year: 'numeric', month: 'short', day: 'numeric' }
+                                    )}
+                                  </div>
+                                </div>
+                                <h3 className="text-xl font-bold mt-2">
+                                  {language === 'en' ? achievement.title : achievement.titleAr}
+                                </h3>
+                              </CardHeader>
+                              <CardContent className="p-5 pt-0">
+                                <p className="text-muted-foreground">
+                                  {language === 'en' ? achievement.description : achievement.descriptionAr}
+                                </p>
+                                
+                                {achievement.image && (
+                                  <div className="mt-4">
+                                    <img 
+                                      src={achievement.image} 
+                                      alt={language === 'en' ? achievement.title : achievement.titleAr} 
+                                      className="rounded-md max-h-40 object-contain"
+                                    />
+                                  </div>
+                                )}
+                                
+                                {achievement.link && (
+                                  <a 
+                                    href={achievement.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center mt-4 text-sm text-primary hover:underline"
+                                  >
+                                    {language === 'en' ? 'Learn more' : 'اقرأ المزيد'}
+                                    <ExternalLink className="h-3.5 w-3.5 ml-1" />
+                                  </a>
+                                )}
+                              </CardContent>
+                            </Card>
                           </div>
-                          
-                          <p className="text-muted-foreground">
-                            {language === "en" ? achievement.description : achievement.descriptionAr}
-                          </p>
-                          
-                          {achievement.link && (
-                            <Button variant="link" size="sm" className="mt-2 p-0" asChild>
-                              <a href={achievement.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
-                                {language === "en" ? "View Details" : "عرض التفاصيل"}
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          )}
+                          {/* Empty space for the opposite side */}
+                          <div className="w-1/2"></div>
                         </div>
                       ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                )
+              ))}
             </div>
           </div>
-        </section>
-      </main>
-      <Footer />
-    </div>
+        ) : (
+          <div className="text-center py-16">
+            <p className="text-xl text-muted-foreground">
+              {language === 'en' 
+                ? 'No achievements found in this category.' 
+                : 'لا توجد إنجازات في هذه الفئة.'}
+            </p>
+          </div>
+        )}
+      </div>
+    </Layout>
   );
 };
 

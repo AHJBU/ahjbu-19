@@ -36,9 +36,17 @@ import DashboardCourseOrders from './pages/dashboard/DashboardCourseOrders';
 import FileManager from './pages/dashboard/FileManager';
 import MediaManager from './pages/dashboard/MediaManager';
 import EnhancedBlogEditor from './components/editor/EnhancedBlogEditor';
+import HeaderEditor from './pages/dashboard/HeaderEditor';
+import { useEffect } from 'react';
+import { setupDatabase } from './utils/database-setup';
 import './App.css';
 
 function App() {
+  // Setup database tables if needed
+  useEffect(() => {
+    setupDatabase();
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<Index />} />
@@ -70,6 +78,7 @@ function App() {
       <Route path="/dashboard/files/editor/:id" element={<ProtectedRoute><FileEditor /></ProtectedRoute>} />
       <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardProfile /></ProtectedRoute>} />
       <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+      <Route path="/dashboard/header-editor" element={<ProtectedRoute><HeaderEditor /></ProtectedRoute>} />
       <Route path="/dashboard/achievements" element={<ProtectedRoute><DashboardAchievements /></ProtectedRoute>} />
       <Route path="/dashboard/achievements/editor" element={<ProtectedRoute><AchievementEditor /></ProtectedRoute>} />
       <Route path="/dashboard/achievements/editor/:id" element={<ProtectedRoute><AchievementEditor /></ProtectedRoute>} />

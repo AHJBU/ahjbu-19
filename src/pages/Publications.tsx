@@ -1,232 +1,158 @@
-import { useState } from "react";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { useLanguage } from "@/context/LanguageContext";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { ExternalLink, BookOpen, Search, Calendar, Filter } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { getPublications } from "@/services/publication-service";
-import { Publication } from "@/types/publication";
-import { useQuery } from "@tanstack/react-query";
 
-const getPublicationsByYear = (publications: Publication[]): Record<string, Publication[]> => {
-  const groupedByYear: Record<string, Publication[]> = {};
-  
-  publications.forEach(publication => {
-    const year = new Date(publication.date).getFullYear().toString();
-    
-    if (!groupedByYear[year]) {
-      groupedByYear[year] = [];
-    }
-    
-    groupedByYear[year].push(publication);
-  });
-  
-  // Sort years in descending order
-  return Object.fromEntries(
-    Object.entries(groupedByYear).sort((a, b) => parseInt(b[0]) - parseInt(a[0]))
-  );
-};
+import { useState } from 'react';
+import Layout from '@/components/Layout';
+import { useLanguage } from '@/context/LanguageContext';
+import { Publication } from '@/types/publication';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExternalLink, Calendar, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
 
-const getPublicationCategories = (publications: Publication[]): string[] => {
-  const categories = new Set<string>();
-  
-  publications.forEach(publication => {
-    categories.add(publication.category);
-  });
-  
-  return Array.from(categories);
+// Function to fetch publications
+const getPublications = async (): Promise<Publication[]> => {
+  const { data, error } = await supabase
+    .from('publications')
+    .select('*')
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data as Publication[];
 };
 
 const Publications = () => {
   const { language } = useLanguage();
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const pageTitle = language === 'en' ? 'Publications & Research' : 'المنشورات والأبحاث';
+
   // Fetch publications data
   const { data: publications = [], isLoading } = useQuery({
     queryKey: ['publications'],
     queryFn: getPublications
   });
-  
-  const publicationsByYear = getPublicationsByYear(publications);
-  const categories = getPublicationCategories(publications);
-  
-  // Filter publications based on selected category and search term
-  const filteredPublications = publications.filter(publication => {
-    // Filter by category
-    if (activeCategory && publication.category !== activeCategory) {
-      return false;
-    }
-    
-    // Filter by search term
-    if (searchTerm) {
-      const title = language === "en" ? publication.title : publication.titleAr;
-      const abstract = language === "en" ? publication.abstract : publication.abstractAr;
-      const authors = language === "en" ? publication.authors : publication.authorsAr;
-      
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        title.toLowerCase().includes(searchLower) ||
-        abstract.toLowerCase().includes(searchLower) ||
-        authors.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    return true;
-  });
+
+  // Get unique categories for filtering
+  const categories = ["all", ...new Set(publications.map(item => item.category))];
+
+  // Filter publications based on active filter
+  const filteredPublications = activeFilter === "all" 
+    ? publications 
+    : publications.filter(item => item.category === activeFilter);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-grow pt-16">
-        <section className="py-20">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center mb-12">
-              <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-2">
-                <BookOpen className="h-8 w-8 text-primary" />
-                {language === "en" ? "Publications & Research" : "المنشورات والأبحاث"}
-              </h1>
-              <p className="text-muted-foreground">
-                {language === "en"
-                  ? "Academic papers, articles, and research publications in web development and related fields."
-                  : "الأوراق الأكاديمية والمقالات والمنشورات البحثية في تطوير الويب والمجالات ذات الصلة."
-                }
-              </p>
-            </div>
+    <Layout pageTitle={pageTitle}>
+      <div className="container mx-auto py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4">{pageTitle}</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            {language === 'en'
+              ? 'Academic research, articles, and other publications I have authored or contributed to.'
+              : 'البحوث الأكاديمية والمقالات والمنشورات الأخرى التي قمت بتأليفها أو المساهمة فيها.'}
+          </p>
+        </div>
 
-            {isLoading ? (
-              <div className="flex justify-center py-20">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : (
-              <>
-                <div className="flex flex-col lg:flex-row justify-between items-start mb-10 gap-6">
-                  {/* Search */}
-                  <div className="relative w-full lg:w-1/3">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder={language === "en" ? "Search publications..." : "البحث في المنشورات..."}
-                      className="pl-10"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  
-                  {/* Category filter */}
-                  <div className="space-y-2 w-full lg:w-auto">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                      <Filter className="h-4 w-4" />
-                      {language === "en" ? "Filter by type:" : "تصفية حسب النوع:"}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button 
-                        variant={activeCategory === null ? "secondary" : "outline"} 
-                        size="sm"
-                        onClick={() => setActiveCategory(null)}
-                      >
-                        {language === "en" ? "All" : "الكل"}
-                      </Button>
-                      
-                      {categories.map((category) => (
-                        <Button
-                          key={category}
-                          variant={activeCategory === category ? "secondary" : "outline"}
-                          size="sm"
-                          onClick={() => setActiveCategory(category)}
-                        >
-                          {category}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {filteredPublications.length > 0 ? (
-                  <div className="space-y-8">
-                    {filteredPublications.map((publication) => (
-                      <Card key={publication.id} className="overflow-hidden">
-                        <div className="flex flex-col md:flex-row">
-                          {publication.image && (
-                            <div className="md:w-1/3 h-48 md:h-auto">
-                              <img 
-                                src={publication.image} 
-                                alt={language === "en" ? publication.title : publication.titleAr}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          
-                          <CardContent className={`p-6 ${publication.image ? 'md:w-2/3' : 'w-full'}`}>
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                              <Badge className="w-fit">
-                                {publication.category}
-                              </Badge>
-                              <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {new Date(publication.date).toLocaleDateString(
-                                  language === "en" ? "en-US" : "ar-SA",
-                                  { year: "numeric", month: "long", day: "numeric" }
-                                )}
-                              </span>
-                            </div>
-                            
-                            <h3 className="text-xl font-bold mb-2">
-                              {language === "en" ? publication.title : publication.titleAr}
-                            </h3>
-                            
-                            <p className="text-sm mb-4 text-muted-foreground">
-                              <span className="font-medium">
-                                {language === "en" ? "Authors: " : "المؤلفون: "}
-                              </span>
-                              {language === "en" ? publication.authors : publication.authorsAr}
-                            </p>
-                            
-                            <p className="text-muted-foreground mb-3">
-                              {language === "en" ? publication.abstract : publication.abstractAr}
-                            </p>
-                            
-                            <div className="flex items-center justify-between pt-4 border-t">
-                              <p className="text-sm">
-                                <span className="font-medium">
-                                  {language === "en" ? "Published in: " : "نُشر في: "}
-                                </span>
-                                {language === "en" ? publication.publishedIn : publication.publishedInAr}
-                              </p>
-                              
-                              {publication.link && (
-                                <Button variant="outline" size="sm" className="gap-1" asChild>
-                                  <a href={publication.link} target="_blank" rel="noopener noreferrer">
-                                    {language === "en" ? "Read Paper" : "قراءة الورقة"}
-                                    <ExternalLink className="h-4 w-4" />
-                                  </a>
-                                </Button>
-                              )}
-                            </div>
-                          </CardContent>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-20">
-                    <p className="text-muted-foreground">
-                      {language === "en" 
-                        ? "No publications match your filter criteria." 
-                        : "لا توجد منشورات تطابق معايير التصفية."
-                      }
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
+        <Tabs defaultValue="all" className="w-full mb-12" onValueChange={setActiveFilter}>
+          <div className="flex justify-center mb-8">
+            <TabsList className="w-fit">
+              {categories.map((category) => (
+                <TabsTrigger key={category} value={category} className="capitalize">
+                  {category === 'all' ? (language === 'en' ? 'All' : 'الكل') : category}
+                </TabsTrigger>
+              ))}
+            </TabsList>
           </div>
-        </section>
-      </main>
-      <Footer />
-    </div>
+        </Tabs>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredPublications.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6">
+            {filteredPublications.map((publication) => (
+              <Card key={publication.id} className="overflow-hidden">
+                <CardContent className="p-6 flex flex-col md:flex-row gap-6">
+                  {publication.image && (
+                    <div className="flex-shrink-0 md:w-1/4 overflow-hidden">
+                      <img
+                        src={publication.image}
+                        alt={language === 'en' ? publication.title : publication.titleAr}
+                        className="w-full aspect-[4/3] object-cover rounded-md"
+                      />
+                    </div>
+                  )}
+                  <div className={publication.image ? "md:w-3/4" : "w-full"}>
+                    <div className="flex flex-wrap justify-between items-start mb-3 gap-2">
+                      <Badge variant="outline">
+                        {publication.category}
+                      </Badge>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5 mr-1" />
+                        {new Date(publication.date).toLocaleDateString(
+                          language === "en" ? undefined : "ar-SA", 
+                          { year: 'numeric', month: 'short' }
+                        )}
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-2xl font-bold mb-2">
+                      {language === 'en' ? publication.title : publication.titleAr}
+                    </h3>
+                    
+                    <p className="text-muted-foreground mb-4">
+                      {language === 'en' ? publication.abstract : publication.abstractAr}
+                    </p>
+                    
+                    <div className="mb-4">
+                      <p className="text-sm">
+                        <span className="font-semibold">
+                          {language === 'en' ? 'Authors: ' : 'المؤلفون: '}
+                        </span>
+                        {language === 'en' ? publication.authors : publication.authorsAr}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-semibold">
+                          {language === 'en' ? 'Published in: ' : 'نُشر في: '}
+                        </span>
+                        {language === 'en' ? publication.publishedIn : publication.publishedInAr}
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      {publication.link && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={publication.link} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            {language === 'en' ? 'View Publication' : 'عرض المنشور'}
+                          </a>
+                        </Button>
+                      )}
+                      
+                      <Button size="sm" asChild>
+                        <a href={`/publications/${publication.id}`}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          {language === 'en' ? 'Read Details' : 'قراءة التفاصيل'}
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <p className="text-xl text-muted-foreground">
+              {language === 'en' 
+                ? 'No publications found in this category.' 
+                : 'لا توجد منشورات في هذه الفئة.'}
+            </p>
+          </div>
+        )}
+      </div>
+    </Layout>
   );
 };
 
