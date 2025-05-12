@@ -1,151 +1,279 @@
 
+import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useLanguage } from "@/context/LanguageContext";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DashboardUserProfile } from "@/components/dashboard/DashboardUserProfile";
-import { StaticContentEditor } from "@/components/dashboard/StaticContentEditor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoaderCircle, Settings, User, Shield, Globe, Languages, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import { LayoutTemplate, PaintBucket, UserCircle, FileText, Settings2, Database } from "lucide-react";
 
 const DashboardSettings = () => {
   const { language } = useLanguage();
-
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const handleSave = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+  };
+  
   return (
     <DashboardLayout 
       title={language === "en" ? "Settings" : "الإعدادات"}
       breadcrumbs={[
+        { label: language === "en" ? "Dashboard" : "لوحة التحكم", href: "/dashboard" },
         { label: language === "en" ? "Settings" : "الإعدادات", href: "/dashboard/settings" }
       ]}
     >
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="mb-8">
-          <TabsTrigger value="profile">
-            <UserCircle className="h-4 w-4 mr-2" />
-            {language === "en" ? "Profile" : "الملف الشخصي"}
+      <Tabs defaultValue="general" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="general">
+            <Settings className="h-4 w-4 mr-2" />
+            {language === "en" ? "General" : "عام"}
           </TabsTrigger>
-          <TabsTrigger value="content">
-            <FileText className="h-4 w-4 mr-2" />
-            {language === "en" ? "Content" : "المحتوى"}
+          <TabsTrigger value="account">
+            <User className="h-4 w-4 mr-2" />
+            {language === "en" ? "Account" : "الحساب"}
           </TabsTrigger>
-          <TabsTrigger value="layout">
-            <LayoutTemplate className="h-4 w-4 mr-2" />
-            {language === "en" ? "Layout" : "التخطيط"}
+          <TabsTrigger value="security">
+            <Shield className="h-4 w-4 mr-2" />
+            {language === "en" ? "Security" : "الأمان"}
           </TabsTrigger>
           <TabsTrigger value="appearance">
-            <PaintBucket className="h-4 w-4 mr-2" />
+            <Globe className="h-4 w-4 mr-2" />
             {language === "en" ? "Appearance" : "المظهر"}
-          </TabsTrigger>
-          <TabsTrigger value="system">
-            <Settings2 className="h-4 w-4 mr-2" />
-            {language === "en" ? "System" : "النظام"}
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="profile">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <DashboardUserProfile />
-            </div>
-            <div>
-              {/* Additional profile information can go here in future */}
-            </div>
-          </div>
+        <TabsContent value="general" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === "en" ? "General Settings" : "الإعدادات العامة"}</CardTitle>
+              <CardDescription>
+                {language === "en" 
+                  ? "Manage general website settings." 
+                  : "إدارة إعدادات الموقع العامة."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="siteName">{language === "en" ? "Site Name" : "اسم الموقع"}</Label>
+                  <Input id="siteName" defaultValue="Dr. Academic Portfolio" className="mt-1" />
+                </div>
+                
+                <div>
+                  <Label htmlFor="siteDescription">
+                    {language === "en" ? "Site Description" : "وصف الموقع"}
+                  </Label>
+                  <Input 
+                    id="siteDescription" 
+                    defaultValue={language === "en" 
+                      ? "Academic portfolio and personal website" 
+                      : "سيرة أكاديمية وموقع شخصي"
+                    } 
+                    className="mt-1" 
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>{language === "en" ? "Maintenance Mode" : "وضع الصيانة"}</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {language === "en" 
+                        ? "Temporarily disable public access to the site." 
+                        : "تعطيل الوصول العام للموقع مؤقتًا."}
+                    </p>
+                  </div>
+                  <Switch />
+                </div>
+              </div>
+              
+              <div className="pt-4 border-t space-y-4">
+                <h3 className="text-lg font-medium">
+                  {language === "en" ? "Advanced Features" : "الميزات المتقدمة"}
+                </h3>
+                
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-amber-500" />
+                        {language === "en" ? "AI Tools" : "أدوات الذكاء الاصطناعي"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {language === "en" 
+                          ? "Configure AI tools for content translation and generation." 
+                          : "تكوين أدوات الذكاء الاصطناعي لترجمة المحتوى وإنشائه."}
+                      </p>
+                      <Button asChild>
+                        <Link to="/dashboard/settings/ai">
+                          {language === "en" ? "Configure AI Settings" : "تكوين إعدادات الذكاء الاصطناعي"}
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Languages className="h-5 w-5 text-blue-500" />
+                        {language === "en" ? "Localization" : "التوطين اللغوي"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {language === "en" 
+                          ? "Configure language settings and translations." 
+                          : "تكوين إعدادات اللغة والترجمات."}
+                      </p>
+                      <Button variant="outline">
+                        {language === "en" ? "Manage Languages" : "إدارة اللغات"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
-        <TabsContent value="content">
-          <StaticContentEditor />
+        <TabsContent value="account">
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === "en" ? "Account Settings" : "إعدادات الحساب"}</CardTitle>
+              <CardDescription>
+                {language === "en" 
+                  ? "Manage your account details." 
+                  : "إدارة تفاصيل حسابك."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="name">{language === "en" ? "Name" : "الاسم"}</Label>
+                <Input id="name" defaultValue="Dr. Academic" className="mt-1" />
+              </div>
+              
+              <div>
+                <Label htmlFor="email">{language === "en" ? "Email" : "البريد الإلكتروني"}</Label>
+                <Input id="email" defaultValue="admin@example.com" type="email" className="mt-1" />
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
-        <TabsContent value="layout">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>{language === "en" ? "Header Navigation" : "تنقل الهيدر"}</CardTitle>
-                <CardDescription>
-                  {language === "en" 
-                    ? "Customize the navigation menu in the site header" 
-                    : "تخصيص قائمة التنقل في رأس الموقع"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link to="/dashboard/header-editor">
-                    {language === "en" ? "Edit Header Navigation" : "تعديل تنقل الهيدر"}
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>{language === "en" ? "Footer" : "تذييل الصفحة"}</CardTitle>
-                <CardDescription>
-                  {language === "en"
-                    ? "Customize the footer content and links"
-                    : "تخصيص محتوى وروابط تذييل الصفحة"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" disabled>
-                  {language === "en" ? "Coming Soon" : "قريباً"}
-                </Button>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>{language === "en" ? "Homepage Layout" : "تخطيط الصفحة الرئيسية"}</CardTitle>
-                <CardDescription>
-                  {language === "en"
-                    ? "Customize the sections and layout of the homepage"
-                    : "تخصيص أقسام وتخطيط الصفحة الرئيسية"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" disabled>
-                  {language === "en" ? "Coming Soon" : "قريباً"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === "en" ? "Security Settings" : "إعدادات الأمان"}</CardTitle>
+              <CardDescription>
+                {language === "en" 
+                  ? "Manage security settings for your account." 
+                  : "إدارة إعدادات الأمان لحسابك."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="password">{language === "en" ? "New Password" : "كلمة المرور الجديدة"}</Label>
+                <Input id="password" type="password" className="mt-1" />
+              </div>
+              
+              <div>
+                <Label htmlFor="confirmPassword">
+                  {language === "en" ? "Confirm New Password" : "تأكيد كلمة المرور الجديدة"}
+                </Label>
+                <Input id="confirmPassword" type="password" className="mt-1" />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{language === "en" ? "Two-Factor Authentication" : "المصادقة الثنائية"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "en" 
+                      ? "Enable two-factor authentication for added security." 
+                      : "تمكين المصادقة الثنائية لأمان إضافي."}
+                  </p>
+                </div>
+                <Switch />
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="appearance">
-          <div className="text-center py-16 text-muted-foreground">
-            {language === "en" 
-              ? "Appearance settings will be implemented in the next phase." 
-              : "سيتم تنفيذ إعدادات المظهر في المرحلة التالية."
-            }
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="system">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  <div className="flex items-center">
-                    <Database className="h-5 w-5 mr-2" />
-                    {language === "en" ? "Database Setup" : "إعداد قاعدة البيانات"}
-                  </div>
-                </CardTitle>
-                <CardDescription>
-                  {language === "en" 
-                    ? "Initialize or reset database tables and data" 
-                    : "تهيئة أو إعادة تعيين جداول وبيانات قاعدة البيانات"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline">
-                  {language === "en" ? "Database Management" : "إدارة قاعدة البيانات"}
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === "en" ? "Appearance Settings" : "إعدادات المظهر"}</CardTitle>
+              <CardDescription>
+                {language === "en" 
+                  ? "Customize the look and feel of your website." 
+                  : "تخصيص مظهر وشكل موقعك."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{language === "en" ? "RTL Support" : "دعم الكتابة من اليمين إلى اليسار"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "en" 
+                      ? "Support right-to-left languages." 
+                      : "دعم اللغات التي تكتب من اليمين إلى اليسار."}
+                  </p>
+                </div>
+                <Switch defaultChecked />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{language === "en" ? "Dark Mode" : "الوضع الداكن"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "en" 
+                      ? "Enable dark mode theme." 
+                      : "تمكين سمة الوضع الداكن."}
+                  </p>
+                </div>
+                <Switch defaultChecked />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{language === "en" ? "Header Customization" : "تخصيص الهيدر"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "en" 
+                      ? "Customize website header and navigation." 
+                      : "تخصيص رأس الموقع والتنقل."}
+                  </p>
+                </div>
+                <Button variant="outline" asChild>
+                  <Link to="/dashboard/header-editor">
+                    {language === "en" ? "Header Editor" : "محرر الهيدر"}
+                  </Link>
                 </Button>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+      
+      <div className="flex justify-end mt-6">
+        <Button onClick={handleSave} disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+              {language === "en" ? "Saving..." : "جارِ الحفظ..."}
+            </>
+          ) : (
+            language === "en" ? "Save Settings" : "حفظ الإعدادات"
+          )}
+        </Button>
+      </div>
     </DashboardLayout>
   );
 };

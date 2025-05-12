@@ -52,3 +52,53 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- Create the settings table if it doesn't exist
+CREATE OR REPLACE FUNCTION create_settings_table()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Check if table exists
+  IF NOT EXISTS (
+    SELECT FROM pg_tables
+    WHERE schemaname = 'public'
+    AND tablename = 'settings'
+  ) THEN
+    -- Create the table
+    CREATE TABLE public.settings (
+      id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+      key text NOT NULL UNIQUE,
+      value jsonb NOT NULL,
+      created_at timestamp with time zone DEFAULT now(),
+      updated_at timestamp with time zone DEFAULT now()
+    );
+
+    -- Add comment
+    COMMENT ON TABLE public.settings IS 'Stores application settings and configurations';
+
+    -- Enable Row Level Security
+    ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
+    -- Set up RLS policies
+    CREATE POLICY "Allow public read access" ON public.settings
+      FOR SELECT USING (true);
+
+    CREATE POLICY "Allow authenticated insert access" ON public.settings
+      FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+      
+    CREATE POLICY "Allow authenticated update access" ON public.settings
+      FOR UPDATE USING (auth.role() = 'authenticated');
+      
+    CREATE POLICY "Allow authenticated delete access" ON public.settings
+      FOR DELETE USING (auth.role() = 'authenticated');
+
+    -- Create the updated_at trigger
+    CREATE TRIGGER set_updated_at
+    BEFORE UPDATE ON public.settings
+    FOR EACH ROW
+    EXECUTE PROCEDURE public.set_updated_at();
+    
+  END IF;
+END;
+$$;

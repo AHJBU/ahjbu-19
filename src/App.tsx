@@ -1,5 +1,5 @@
 
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Index from './pages/Index';
 import About from './pages/About';
 import AboutMe from './pages/AboutMe';
@@ -37,6 +37,7 @@ import FileManager from './pages/dashboard/FileManager';
 import MediaManager from './pages/dashboard/MediaManager';
 import EnhancedBlogEditor from './components/editor/EnhancedBlogEditor';
 import HeaderEditor from './pages/dashboard/HeaderEditor';
+import AISettings from './pages/dashboard/AISettings';
 import { useEffect } from 'react';
 import { setupDatabase } from './utils/database-setup';
 import './App.css';
@@ -78,6 +79,7 @@ function App() {
       <Route path="/dashboard/files/editor/:id" element={<ProtectedRoute><FileEditor /></ProtectedRoute>} />
       <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardProfile /></ProtectedRoute>} />
       <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+      <Route path="/dashboard/settings/ai" element={<ProtectedRoute><AISettings /></ProtectedRoute>} />
       <Route path="/dashboard/header-editor" element={<ProtectedRoute><HeaderEditor /></ProtectedRoute>} />
       <Route path="/dashboard/achievements" element={<ProtectedRoute><DashboardAchievements /></ProtectedRoute>} />
       <Route path="/dashboard/achievements/editor" element={<ProtectedRoute><AchievementEditor /></ProtectedRoute>} />
@@ -91,6 +93,8 @@ function App() {
       <Route path="/dashboard/course-orders" element={<ProtectedRoute><DashboardCourseOrders /></ProtectedRoute>} />
       <Route path="/dashboard/files/manager" element={<ProtectedRoute><FileManager /></ProtectedRoute>} />
       <Route path="/dashboard/media" element={<ProtectedRoute><MediaManager /></ProtectedRoute>} />
+      
+      {/* Catch-all route to handle 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

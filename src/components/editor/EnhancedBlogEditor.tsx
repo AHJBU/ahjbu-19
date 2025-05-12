@@ -18,7 +18,9 @@ import {
   Calendar, 
   Tag,
   FileText,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Sparkles,
+  Languages
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPost, updatePost, createPost } from "@/services/supabase-service";
@@ -28,6 +30,8 @@ import { MediaSelector } from "@/components/media/MediaSelector";
 import { toast } from "@/components/ui/use-toast";
 import { AutoSave } from "@/components/editor/AutoSave";
 import { WordPressImporter } from "@/components/editor/WordPressImporter";
+import { AITranslation } from "@/components/ai/AITranslation";
+import { AITextGeneration } from "@/components/ai/AITextGeneration";
 
 export const EnhancedBlogEditor = () => {
   const { language } = useLanguage();
@@ -50,6 +54,7 @@ export const EnhancedBlogEditor = () => {
   const [featured, setFeatured] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [activeTab, setActiveTab] = useState("english-content");
+  const [showAiTools, setShowAiTools] = useState(false);
 
   // Use TanStack Query v5 syntax
   const { data: post, isLoading: isPostLoading } = useQuery({
@@ -214,6 +219,29 @@ export const EnhancedBlogEditor = () => {
     setIsDirty(true);
   };
 
+  const handleTranslateToEnglish = (data: { title: string, excerpt: string, content: string }) => {
+    setTitle(data.title);
+    setExcerpt(data.excerpt);
+    setContent(data.content);
+    setIsDirty(true);
+  };
+
+  const handleTranslateToArabic = (data: { titleAr: string, excerptAr: string, contentAr: string }) => {
+    setTitleAr(data.titleAr);
+    setExcerptAr(data.excerptAr);
+    setContentAr(data.contentAr);
+    setIsDirty(true);
+  };
+
+  const handleGeneratedContent = (generatedText: string) => {
+    if (activeTab === "english-content") {
+      setContent(generatedText);
+    } else if (activeTab === "arabic-content") {
+      setContentAr(generatedText);
+    }
+    setIsDirty(true);
+  };
+
   return (
     <DashboardLayout
       title={isEditing ? (language === "en" ? "Edit Blog Post" : "تعديل مقال") : (language === "en" ? "New Blog Post" : "مقال جديد")}
@@ -226,6 +254,15 @@ export const EnhancedBlogEditor = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{isEditing ? (language === "en" ? "Edit Blog Post" : "تعديل مقال") : (language === "en" ? "New Blog Post" : "مقال جديد")}</CardTitle>
           <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAiTools(!showAiTools)}
+              className="flex items-center gap-1"
+            >
+              <Sparkles className="h-4 w-4" />
+              {language === "en" ? "AI Tools" : "أدوات الذكاء"}
+            </Button>
             <AutoSave 
               onSave={handleSaveDraft}
               isDirty={isDirty}
@@ -235,6 +272,48 @@ export const EnhancedBlogEditor = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {showAiTools && (
+            <div className="mb-6 border-b pb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-amber-500" /> 
+                  {language === "en" ? "AI Assistance" : "مساعدة الذكاء الاصطناعي"}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAiTools(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-medium mb-2 flex items-center">
+                    <Languages className="h-4 w-4 mr-2" />
+                    {language === "en" ? "AI Translation" : "الترجمة الذكية"}
+                  </h4>
+                  <AITranslation 
+                    title={title}
+                    titleAr={titleAr}
+                    excerpt={excerpt}
+                    excerptAr={excerptAr}
+                    content={content}
+                    contentAr={contentAr}
+                    onTranslateToEnglish={handleTranslateToEnglish}
+                    onTranslateToArabic={handleTranslateToArabic}
+                  />
+                </div>
+
+                <AITextGeneration 
+                  title={title || titleAr} 
+                  onGenerate={handleGeneratedContent}
+                />
+              </div>
+            </div>
+          )}
+
           <form className="space-y-8" onSubmit={handleSubmit}>
             <div className="flex justify-between items-center">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

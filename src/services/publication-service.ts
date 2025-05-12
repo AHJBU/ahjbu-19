@@ -72,3 +72,53 @@ export const getFeaturedPublications = async (limit: number = 3): Promise<Public
   if (error) throw error;
   return data as Publication[];
 };
+
+// Archive a publication
+export const archivePublication = async (id: string): Promise<Publication> => {
+  const { data, error } = await supabase
+    .from('publications')
+    .update({ archived: true })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Publication;
+};
+
+// Restore a publication from archive
+export const restorePublication = async (id: string): Promise<Publication> => {
+  const { data, error } = await supabase
+    .from('publications')
+    .update({ archived: false })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Publication;
+};
+
+// Get all non-archived publications
+export const getNonArchivedPublications = async (): Promise<Publication[]> => {
+  const { data, error } = await supabase
+    .from('publications')
+    .select('*')
+    .eq('archived', false)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data as Publication[];
+};
+
+// Get all archived publications
+export const getArchivedPublications = async (): Promise<Publication[]> => {
+  const { data, error } = await supabase
+    .from('publications')
+    .select('*')
+    .eq('archived', true)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data as Publication[];
+};
