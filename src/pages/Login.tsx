@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { SignIn } from '@/components/auth/SignIn';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { Helmet } from 'react-helmet-async';
 
 const Login = () => {
   const { language } = useLanguage();
@@ -21,6 +22,9 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>{language === 'en' ? 'Admin Login' : 'تسجيل دخول المسؤول'}</title>
+      </Helmet>
       <Header />
       <main className="flex-grow pt-16">
         <div className="container mx-auto py-16 px-4">

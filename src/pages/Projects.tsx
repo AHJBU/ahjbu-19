@@ -1,8 +1,8 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Layout from '@/components/Layout';
 import { useLanguage } from '@/context/LanguageContext';
-import { ProjectType } from '@/data/projects';
+import { ProjectType } from '@/types/project';
 import { getProjects } from '@/services/supabase-service';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,10 +21,10 @@ const Projects = () => {
     queryFn: getProjects
   });
 
-  // Extract unique categories from projects
-  const categories = ["all", ...new Set(projects.map(project => project.category))];
+  // Extract unique categories from projects, making sure to check for undefined
+  const categories = ["all", ...new Set(projects.map(project => project.category || "uncategorized").filter(Boolean))];
 
-  // Filter projects based on active category
+  // Filter projects based on active category, handling missing category property
   const filteredProjects = activeCategory === "all"
     ? projects
     : projects.filter(project => project.category === activeCategory);
@@ -72,9 +72,11 @@ const Projects = () => {
                 )}
                 <CardContent className="p-6 flex flex-col flex-grow">
                   <div className="mb-4">
-                    <Badge variant="outline" className="mb-2">
-                      {project.category}
-                    </Badge>
+                    {project.category && (
+                      <Badge variant="outline" className="mb-2">
+                        {project.category}
+                      </Badge>
+                    )}
                     <h3 className="text-xl font-bold mb-2">
                       {language === 'en' ? project.title : project.titleAr}
                     </h3>

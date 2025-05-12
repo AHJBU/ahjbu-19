@@ -10,5 +10,5 @@ export interface ProjectType {
   tags: string[];
   featured: boolean;
   date: string;
-  category: string;
+  category?: string;
 }
