@@ -3,178 +3,252 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
-import {
-  BarChart3,
-  FileText,
-  BookOpen,
-  Briefcase,
-  Award,
-  Settings,
-  FileImage,
-  Home,
-  Mail,
-  Menu,
-  X,
-  PanelLeftClose,
-  PanelLeftOpen,
-  FileCode2,
-  Share,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-interface SidebarLink {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  labelAr: string;
-}
+import {
+  LayoutDashboard,
+  FileText,
+  FolderKanban,
+  GraduationCap,
+  BookOpen,
+  Trophy,
+  FolderIcon,
+  ImageIcon,
+  Settings,
+  User,
+  GlobeIcon,
+  MapPin,
+  Briefcase,
+  Mail
+} from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export function DashboardSidebar() {
   const { language } = useLanguage();
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  const links: SidebarLink[] = [
-    {
-      href: "/dashboard",
-      icon: <BarChart3 className="h-5 w-5" />,
-      label: "Dashboard",
-      labelAr: "لوحة التحكم",
-    },
-    {
-      href: "/dashboard/blog",
-      icon: <FileText className="h-5 w-5" />,
-      label: "Blog",
-      labelAr: "المدونة",
-    },
-    {
-      href: "/dashboard/courses",
-      icon: <BookOpen className="h-5 w-5" />,
-      label: "Courses",
-      labelAr: "الدورات",
-    },
-    {
-      href: "/dashboard/projects",
-      icon: <Briefcase className="h-5 w-5" />,
-      label: "Projects",
-      labelAr: "المشاريع",
-    },
-    {
-      href: "/dashboard/publications",
-      icon: <FileCode2 className="h-5 w-5" />,
-      label: "Publications",
-      labelAr: "المنشورات",
-    },
-    {
-      href: "/dashboard/achievements",
-      icon: <Award className="h-5 w-5" />,
-      label: "Achievements",
-      labelAr: "الإنجازات",
-    },
-    {
-      href: "/dashboard/files",
-      icon: <FileImage className="h-5 w-5" />,
-      label: "Files",
-      labelAr: "الملفات",
-    },
-    {
-      href: "/dashboard/social-integrations",
-      icon: <Share className="h-5 w-5" />,
-      label: "Social",
-      labelAr: "التواصل",
-    },
-    {
-      href: "/",
-      icon: <Home className="h-5 w-5" />,
-      label: "View Site",
-      labelAr: "عرض الموقع",
-    },
-    {
-      href: "/dashboard/settings",
-      icon: <Settings className="h-5 w-5" />,
-      label: "Settings",
-      labelAr: "الإعدادات",
-    },
-  ];
-
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
-  };
-
-  const toggleMobileMenu = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const [isContentOpen, setIsContentOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   return (
     <>
-      {/* Mobile Menu Toggle */}
-      <div className="fixed bottom-4 right-4 z-40 md:hidden">
-        <Button
-          variant="default"
-          size="icon"
-          className="h-12 w-12 rounded-full shadow-lg"
-          onClick={toggleMobileMenu}
-        >
-          {mobileOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
-        </Button>
-      </div>
-
-      {/* Overlay for mobile */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm md:hidden"
-          onClick={toggleMobileMenu}
-        ></div>
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-30 w-64 transform border-r bg-sidebar-background text-sidebar-foreground transition-transform duration-200 ease-in-out md:relative md:translate-x-0",
-          collapsed ? "w-16" : "w-64",
-          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        )}
-      >
-        <div className="flex h-16 items-center justify-between border-b px-4">
-          <div className={cn("flex items-center", collapsed ? "justify-center w-full" : "")}>
-            <span className={cn("font-semibold text-lg", collapsed ? "hidden" : "block")}>
-              {language === "en" ? "Admin" : "المشرف"}
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden md:flex"
-            onClick={toggleSidebar}
+      <div className="hidden md:flex h-screen w-64 flex-col border-r bg-background fixed">
+        <div className="p-6">
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-semibold"
           >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-          </Button>
+            <GlobeIcon className="h-6 w-6" />
+            <span className="text-xl font-bold">
+              {language === "en" ? "Admin" : "الإدارة"}
+            </span>
+          </Link>
         </div>
-
-        <nav className="space-y-1 p-2">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                location.pathname === link.href
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground",
-                collapsed ? "justify-center" : ""
-              )}
-            >
-              {link.icon}
-              <span className={cn("text-sm font-medium", collapsed ? "hidden" : "block")}>
-                {language === "en" ? link.label : link.labelAr}
-              </span>
+        <nav className="flex-1 overflow-auto p-3">
+          <div className="grid gap-1">
+            <Link to="/dashboard">
+              <Button
+                variant={location.pathname === "/dashboard" ? "default" : "ghost"}
+                className="w-full justify-start"
+              >
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                {language === "en" ? "Dashboard" : "لوحة التحكم"}
+              </Button>
             </Link>
-          ))}
+
+            {/* Profile Management */}
+            <Collapsible
+              open={isProfileOpen}
+              onOpenChange={setIsProfileOpen}
+              className="w-full"
+            >
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-between",
+                    location.pathname.includes("/dashboard/profile") && "bg-accent"
+                  )}
+                >
+                  <div className="flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>{language === "en" ? "Profile" : "الملف الشخصي"}</span>
+                  </div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={cn("h-4 w-4 transition-transform", isProfileOpen && "rotate-180")}
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-4 pt-1">
+                <div className="grid gap-1">
+                  <Link to="/dashboard/profile">
+                    <Button
+                      variant={location.pathname === "/dashboard/profile" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      {language === "en" ? "My Profile" : "ملفي الشخصي"}
+                    </Button>
+                  </Link>
+                  <Link to="/dashboard/profile-editor">
+                    <Button
+                      variant={location.pathname === "/dashboard/profile-editor" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      {language === "en" ? "Experience & Education" : "الخبرات والتعليم"}
+                    </Button>
+                  </Link>
+                  <Link to="/dashboard/header-editor">
+                    <Button
+                      variant={location.pathname === "/dashboard/header-editor" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <GlobeIcon className="mr-2 h-4 w-4" />
+                      {language === "en" ? "Edit Header" : "تعديل الرأس"}
+                    </Button>
+                  </Link>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Link to="/dashboard/blog">
+              <Button
+                variant={location.pathname.includes("/dashboard/blog") ? "secondary" : "ghost"}
+                className="w-full justify-start"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {language === "en" ? "Blog Posts" : "المقالات"}
+              </Button>
+            </Link>
+
+            <Link to="/dashboard/projects">
+              <Button
+                variant={location.pathname.includes("/dashboard/projects") ? "secondary" : "ghost"}
+                className="w-full justify-start"
+              >
+                <FolderKanban className="mr-2 h-4 w-4" />
+                {language === "en" ? "Projects" : "المشاريع"}
+              </Button>
+            </Link>
+
+            <Link to="/dashboard/courses">
+              <Button
+                variant={location.pathname.includes("/dashboard/courses") ? "secondary" : "ghost"}
+                className="w-full justify-start"
+              >
+                <GraduationCap className="mr-2 h-4 w-4" />
+                {language === "en" ? "Courses" : "الدورات"}
+              </Button>
+            </Link>
+
+            <Link to="/dashboard/publications">
+              <Button
+                variant={location.pathname.includes("/dashboard/publications") ? "secondary" : "ghost"}
+                className="w-full justify-start"
+              >
+                <BookOpen className="mr-2 h-4 w-4" />
+                {language === "en" ? "Publications" : "المنشورات"}
+              </Button>
+            </Link>
+
+            <Link to="/dashboard/achievements">
+              <Button
+                variant={location.pathname.includes("/dashboard/achievements") ? "secondary" : "ghost"}
+                className="w-full justify-start"
+              >
+                <Trophy className="mr-2 h-4 w-4" />
+                {language === "en" ? "Achievements" : "الإنجازات"}
+              </Button>
+            </Link>
+
+            {/* Content Management */}
+            <Collapsible
+              open={isContentOpen}
+              onOpenChange={setIsContentOpen}
+              className="w-full"
+            >
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-between",
+                    (location.pathname.includes("/dashboard/files") ||
+                      location.pathname.includes("/dashboard/media")) && "bg-accent"
+                  )}
+                >
+                  <div className="flex items-center">
+                    <FolderIcon className="mr-2 h-4 w-4" />
+                    <span>{language === "en" ? "Content" : "المحتوى"}</span>
+                  </div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={cn("h-4 w-4 transition-transform", isContentOpen && "rotate-180")}
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-4 pt-1">
+                <div className="grid gap-1">
+                  <Link to="/dashboard/files">
+                    <Button
+                      variant={location.pathname === "/dashboard/files" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <FolderIcon className="mr-2 h-4 w-4" />
+                      {language === "en" ? "Files" : "الملفات"}
+                    </Button>
+                  </Link>
+                  <Link to="/dashboard/media">
+                    <Button
+                      variant={location.pathname === "/dashboard/media" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      {language === "en" ? "Media" : "الوسائط"}
+                    </Button>
+                  </Link>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Link to="/dashboard/settings">
+              <Button
+                variant={location.pathname.includes("/dashboard/settings") ? "secondary" : "ghost"}
+                className="w-full justify-start"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                {language === "en" ? "Settings" : "الإعدادات"}
+              </Button>
+            </Link>
+          </div>
         </nav>
       </div>
     </>

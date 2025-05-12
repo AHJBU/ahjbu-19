@@ -27,21 +27,21 @@ export function DatabaseStats() {
       try {
         setLoading(true);
         
-        // Fetch posts count
+        // Fetch actual posts count
         const { count: postsCount, error: postsError } = await supabase
           .from('posts')
           .select('*', { count: 'exact', head: true });
           
         if (postsError) throw postsError;
         
-        // Fetch projects count
+        // Fetch actual projects count
         const { count: projectsCount, error: projectsError } = await supabase
           .from('projects')
           .select('*', { count: 'exact', head: true });
           
         if (projectsError) throw projectsError;
         
-        // Fetch users count
+        // Fetch actual users count
         const { count: usersCount, error: usersError } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true });
@@ -52,18 +52,27 @@ export function DatabaseStats() {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        const { count: activitiesCount, error: activitiesError } = await supabase
+        const { count: recentPostsCount, error: recentPostsError } = await supabase
           .from('posts')
           .select('*', { count: 'exact', head: true })
           .gt('created_at', sevenDaysAgo.toISOString());
           
-        if (activitiesError) throw activitiesError;
+        if (recentPostsError) throw recentPostsError;
+        
+        const { count: recentProjectsCount, error: recentProjectsError } = await supabase
+          .from('projects')
+          .select('*', { count: 'exact', head: true })
+          .gt('created_at', sevenDaysAgo.toISOString());
+          
+        if (recentProjectsError) throw recentProjectsError;
+        
+        const recentActivities = (recentPostsCount || 0) + (recentProjectsCount || 0);
         
         setStats({
           posts: postsCount || 0,
           projects: projectsCount || 0,
           users: usersCount || 0,
-          recentActivities: activitiesCount || 0
+          recentActivities: recentActivities
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
