@@ -1,158 +1,161 @@
-import React, { useState, useCallback } from 'react';
+
+import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Card, CardContent } from '@/components/ui/card';
-import { toast } from '@/components/ui/use-toast';
-import { Upload, X, Check, AlertCircle, FileImage } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { v4 as uuidv4 } from 'uuid';
+import { useToast } from '@/components/ui/use-toast';
+import { Upload, X } from 'lucide-react';
 
 interface MediaUploaderProps {
-  onUploadComplete: (url: string) => void;
-  onError?: (message: string) => void;
+  onUploadComplete?: (files: Array<{ path: string }>) => void;
+  maxFiles?: number;
+  acceptedFileTypes?: string[];
+  maxSize?: number;
 }
 
-const MediaUploader: React.FC<MediaUploaderProps> = ({ onUploadComplete, onError }) => {
+export function MediaUploader({
+  onUploadComplete,
+  maxFiles = 5,
+  acceptedFileTypes = ['image/*', 'application/pdf'],
+  maxSize = 5000000, // 5MB
+}: MediaUploaderProps) {
+  const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    setFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: 'image/*, video/*',
-    maxFiles: 1,
-    multiple: false,
-  });
-
-  const handleUpload = async () => {
-    if (!file) {
+    if (acceptedFiles.length + files.length > maxFiles) {
       toast({
-        title: 'Error',
-        description: 'Please select a file to upload.',
+        title: 'Too many files',
+        description: `You can only upload a maximum of ${maxFiles} files at once.`,
         variant: 'destructive',
       });
-      onError?.('Please select a file to upload.');
       return;
     }
 
+    setFiles((prev) => [...prev, ...acceptedFiles]);
+  }, [files, maxFiles, toast]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: acceptedFileTypes.reduce((acc, type) => ({ ...acc, [type]: [] }), {}),
+    maxSize,
+  });
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpload = async () => {
+    if (!files.length) return;
+    
     setUploading(true);
     setProgress(0);
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExt}`;
-    const filePath = `media/${fileName}`;
-
-    try {
-      const { data, error } = await supabase.storage
-        .from('media')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (error) {
-        console.error('Error uploading file:', error);
-        toast({
-          title: 'Upload Failed',
-          description: error.message,
-          variant: 'destructive',
-        });
-        onError?.(error.message);
-        setUploading(false);
-        return;
-      }
-
-      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
-      onUploadComplete(url);
-      toast({
-        title: 'Upload Successful',
-        description: 'File uploaded successfully!',
+    
+    // Mock upload progress
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 95) {
+          clearInterval(interval);
+          return 95;
+        }
+        return prev + 5;
       });
-    } catch (error: any) {
-      console.error('Unexpected error during upload:', error);
+    }, 100);
+    
+    try {
+      // Mock API call - replace with actual upload API
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock response with file URLs
+      const uploadedFiles = files.map(file => ({
+        path: URL.createObjectURL(file)
+      }));
+      
+      if (onUploadComplete) {
+        onUploadComplete(uploadedFiles);
+      }
+      
       toast({
-        title: 'Upload Failed',
-        description: error.message || 'An unexpected error occurred.',
+        title: 'Upload complete',
+        description: `Successfully uploaded ${files.length} file(s).`,
+      });
+      
+      setFiles([]);
+    } catch (error) {
+      toast({
+        title: 'Upload failed',
+        description: 'There was an error uploading your files.',
         variant: 'destructive',
       });
-      onError?.(error.message || 'An unexpected error occurred.');
     } finally {
-      setUploading(false);
-      setProgress(0);
+      clearInterval(interval);
+      setProgress(100);
+      setTimeout(() => {
+        setUploading(false);
+        setProgress(0);
+      }, 500);
     }
   };
 
-  const handleCancel = () => {
-    setFile(null);
-    setPreviewUrl(null);
-  };
-
   return (
-    <Card>
-      <CardContent className="flex flex-col space-y-4">
-        <div {...getRootProps()} className={`relative border-2 border-dashed rounded-md p-6 cursor-pointer ${isDragActive ? 'border-primary' : 'border-muted'}`}>
-          <input {...getInputProps()} />
-          <div className="text-center">
-            {file ? (
-              <>
-                {file.type.startsWith('image/') ? (
-                  <img src={previewUrl!} alt="Preview" className="max-h-48 mx-auto rounded-md" />
-                ) : (
-                  <div className="flex items-center justify-center h-48 bg-muted rounded-md">
-                    <FileImage className="h-12 w-12 text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">{file.name}</span>
-                  </div>
-                )}
-                <p className="text-sm text-muted-foreground mt-2">
-                  {file.name} - {(file.size / 1024).toFixed(2)} KB
-                </p>
-              </>
-            ) : (
-              <>
-                <Upload className="w-6 h-6 mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">
-                  {isDragActive ? 'Drop the file here...' : 'Click or drag a file to upload'}
-                </p>
-              </>
-            )}
+    <div className="space-y-4">
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors ${
+          isDragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/25 hover:border-primary/50'
+        }`}
+      >
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center justify-center space-y-2 text-center">
+          <Upload className="h-10 w-10 text-muted-foreground" />
+          <h3 className="font-medium text-lg">Drag & drop files here</h3>
+          <p className="text-sm text-muted-foreground">
+            or click to select files (max {maxFiles} files, {maxSize / 1000000}MB each)
+          </p>
+        </div>
+      </div>
+
+      {!!files.length && (
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Selected files ({files.length}):</div>
+          <ul className="space-y-2">
+            {files.map((file, index) => (
+              <li
+                key={`${file.name}-${index}`}
+                className="flex items-center justify-between bg-muted p-2 rounded-md text-sm"
+              >
+                <span className="truncate max-w-[80%]">{file.name}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeFile(index)}
+                  className="h-6 w-6"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {files.length > 0 && !uploading && (
+        <Button onClick={handleUpload} className="w-full">
+          Upload {files.length} file{files.length > 1 ? 's' : ''}
+        </Button>
+      )}
+
+      {uploading && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Uploading...</span>
+            <span>{Math.round(progress)}%</span>
           </div>
-        </div>
-
-        {uploading && (
           <Progress value={progress} className="w-full" />
-        )}
-
-        <div className="flex justify-end space-x-2">
-          {file && (
-            <Button variant="ghost" onClick={handleCancel} disabled={uploading}>
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
-          )}
-          <Button onClick={handleUpload} disabled={uploading || !file}>
-            {uploading ? (
-              <>
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload
-              </>
-            )}
-          </Button>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
-};
-
-export default MediaUploader;
+}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLanguage } from "@/context/LanguageContext";
@@ -242,6 +241,15 @@ export const EnhancedBlogEditor = () => {
     setIsDirty(true);
   };
 
+  const handleInsertGeneratedText = (generatedText: string) => {
+    if (activeTab === "english-content") {
+      setContent(generatedText);
+    } else if (activeTab === "arabic-content") {
+      setContentAr(generatedText);
+    }
+    setIsDirty(true);
+  };
+
   return (
     <DashboardLayout
       title={isEditing ? (language === "en" ? "Edit Blog Post" : "تعديل مقال") : (language === "en" ? "New Blog Post" : "مقال جديد")}
@@ -307,8 +315,8 @@ export const EnhancedBlogEditor = () => {
                 </div>
 
                 <AITextGeneration 
-                  title={title || titleAr} 
-                  onGenerate={handleGeneratedContent}
+                  title={language === 'en' ? 'Generate Content' : 'إنشاء محتوى'}
+                  onGeneratedText={(generatedText) => handleInsertGeneratedText(generatedText)}
                 />
               </div>
             </div>
