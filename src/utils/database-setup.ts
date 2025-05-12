@@ -111,6 +111,37 @@ export const setupAISettingsTable = async () => {
   }
 };
 
+// Function to setup social webhook logs table
+export const setupSocialWebhookLogsTable = async () => {
+  try {
+    // Check if the table exists by attempting to select from it
+    const { error } = await supabase
+      .from('social_webhook_logs')
+      .select('*')
+      .limit(1);
+    
+    // If there's an error, the table probably doesn't exist
+    if (error) {
+      // Create the table using SQL
+      const { error: createError } = await supabase.rpc('create_social_webhook_logs_table', {});
+      
+      if (createError) {
+        console.error('Error creating social_webhook_logs table:', createError);
+        return false;
+      }
+      
+      console.log('Social webhook logs table created successfully');
+      return true;
+    }
+    
+    console.log('Social webhook logs table already exists');
+    return true;
+  } catch (err) {
+    console.error('Error checking for social_webhook_logs table:', err);
+    return false;
+  }
+};
+
 // Call this function from your app initialization
 export const setupDatabase = async () => {
   // Check if we need to perform any database setup
@@ -120,6 +151,7 @@ export const setupDatabase = async () => {
     try {
       await setupNavigationLinksTable();
       await setupAISettingsTable();
+      await setupSocialWebhookLogsTable();
       localStorage.setItem('database_setup_complete', 'true');
     } catch (error) {
       console.error('Database setup error:', error);

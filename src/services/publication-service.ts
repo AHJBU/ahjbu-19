@@ -122,3 +122,100 @@ export const getArchivedPublications = async (): Promise<Publication[]> => {
   if (error) throw error;
   return data as Publication[];
 };
+
+// Publish to social media
+export const publishToSocialMedia = async (publicationId: string, platforms: string[]): Promise<boolean> => {
+  try {
+    // Fetch the publication data
+    const publication = await getPublication(publicationId);
+    
+    // Create a payload to send to the webhook services
+    const payload = {
+      title: publication.title,
+      titleAr: publication.titleAr,
+      abstract: publication.abstract,
+      abstractAr: publication.abstractAr,
+      image: publication.image,
+      link: `${window.location.origin}/publications/${publicationId}`,
+      platforms
+    };
+    
+    // Example of calling a webhook URL for n8n or Make integration
+    const response = await fetch(
+      localStorage.getItem('socialMediaWebhookUrl') || '',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        mode: 'no-cors',
+      }
+    );
+    
+    return true;
+  } catch (error) {
+    console.error('Error publishing to social media:', error);
+    return false;
+  }
+};
+
+// Import publication from social media webhook
+export const handleSocialMediaWebhook = async (data: any): Promise<Publication | null> => {
+  try {
+    // Extract publication data from webhook payload
+    const publicationData = {
+      title: data.title || '',
+      titleAr: data.titleAr || '',
+      abstract: data.abstract || '',
+      abstractAr: data.abstractAr || '',
+      authors: data.authors || '',
+      authorsAr: data.authorsAr || '',
+      date: data.date || new Date().toISOString(),
+      link: data.link || '',
+      image: data.image || '',
+      category: data.category || 'Social Import',
+      tags: data.tags || ['social-import'],
+      featured: false,
+      archived: false,
+      draft: true,
+      publishedIn: data.source || '',
+      publishedInAr: data.sourceAr || ''
+    };
+    
+    // Create the publication
+    return await createPublication(publicationData as Omit<Publication, 'id'>);
+  } catch (error) {
+    console.error('Error importing from social media:', error);
+    return null;
+  }
+};
+
+// Save webhook configurations
+export const saveWebhookConfigurations = (configurations: {
+  makeWebhookUrl?: string;
+  n8nWebhookUrl?: string;
+  zapierWebhookUrl?: string;
+  customWebhookUrl?: string;
+}): void => {
+  Object.entries(configurations).forEach(([key, value]) => {
+    if (value) {
+      localStorage.setItem(key, value);
+    }
+  });
+};
+
+// Get webhook configurations
+export const getWebhookConfigurations = (): {
+  makeWebhookUrl: string;
+  n8nWebhookUrl: string;
+  zapierWebhookUrl: string;
+  customWebhookUrl: string;
+} => {
+  return {
+    makeWebhookUrl: localStorage.getItem('makeWebhookUrl') || '',
+    n8nWebhookUrl: localStorage.getItem('n8nWebhookUrl') || '',
+    zapierWebhookUrl: localStorage.getItem('zapierWebhookUrl') || '',
+    customWebhookUrl: localStorage.getItem('customWebhookUrl') || '',
+  };
+};

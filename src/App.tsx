@@ -38,6 +38,7 @@ import MediaManager from './pages/dashboard/MediaManager';
 import EnhancedBlogEditor from './components/editor/EnhancedBlogEditor';
 import HeaderEditor from './pages/dashboard/HeaderEditor';
 import AISettings from './pages/dashboard/AISettings';
+import SocialIntegrations from './pages/dashboard/SocialIntegrations';
 import { useEffect } from 'react';
 import { setupDatabase } from './utils/database-setup';
 import './App.css';
@@ -93,6 +94,7 @@ function App() {
       <Route path="/dashboard/course-orders" element={<ProtectedRoute><DashboardCourseOrders /></ProtectedRoute>} />
       <Route path="/dashboard/files/manager" element={<ProtectedRoute><FileManager /></ProtectedRoute>} />
       <Route path="/dashboard/media" element={<ProtectedRoute><MediaManager /></ProtectedRoute>} />
+      <Route path="/dashboard/social-integrations" element={<ProtectedRoute><SocialIntegrations /></ProtectedRoute>} />
       
       {/* Catch-all route to handle 404 */}
       <Route path="*" element={<NotFound />} />
