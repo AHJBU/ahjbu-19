@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLanguage } from "@/context/LanguageContext";
@@ -31,6 +32,11 @@ import { AutoSave } from "@/components/editor/AutoSave";
 import { WordPressImporter } from "@/components/editor/WordPressImporter";
 import { AITranslation } from "@/components/ai/AITranslation";
 import { AITextGeneration } from "@/components/ai/AITextGeneration";
+
+interface AITranslationProps {
+  onTranslateToEnglish: (data: { title: string; excerpt: string; content: string }) => void;
+  onTranslateToArabic: (data: { titleAr: string; excerptAr: string; contentAr: string }) => void;
+}
 
 export const EnhancedBlogEditor = () => {
   const { language } = useLanguage();
@@ -234,18 +240,9 @@ export const EnhancedBlogEditor = () => {
 
   const handleGeneratedContent = (generatedText: string) => {
     if (activeTab === "english-content") {
-      setContent(generatedText);
+      setContent(prev => prev + generatedText);
     } else if (activeTab === "arabic-content") {
-      setContentAr(generatedText);
-    }
-    setIsDirty(true);
-  };
-
-  const handleInsertGeneratedText = (generatedText: string) => {
-    if (activeTab === "english-content") {
-      setContent(generatedText);
-    } else if (activeTab === "arabic-content") {
-      setContentAr(generatedText);
+      setContentAr(prev => prev + generatedText);
     }
     setIsDirty(true);
   };
@@ -316,7 +313,7 @@ export const EnhancedBlogEditor = () => {
 
                 <AITextGeneration 
                   title={language === 'en' ? 'Generate Content' : 'إنشاء محتوى'}
-                  onGeneratedText={(generatedText) => handleInsertGeneratedText(generatedText)}
+                  onGeneratedContent={handleGeneratedContent}
                 />
               </div>
             </div>
@@ -344,7 +341,6 @@ export const EnhancedBlogEditor = () => {
                   </TabsTrigger>
                 </TabsList>
                 
-                {/* English Content */}
                 <TabsContent value="english-content" className="space-y-6">
                   <div>
                     <Label htmlFor="title">{language === "en" ? "Title (English)" : "العنوان (بالإنجليزية)"}</Label>
@@ -379,7 +375,6 @@ export const EnhancedBlogEditor = () => {
                   </div>
                 </TabsContent>
                 
-                {/* Arabic Content */}
                 <TabsContent value="arabic-content" className="space-y-6">
                   <div>
                     <Label htmlFor="titleAr">{language === "en" ? "Title (Arabic)" : "العنوان (بالعربية)"}</Label>
@@ -416,7 +411,6 @@ export const EnhancedBlogEditor = () => {
                   </div>
                 </TabsContent>
                 
-                {/* Media */}
                 <TabsContent value="media" className="space-y-6">
                   <div>
                     <Label>{language === "en" ? "Featured Image" : "صورة المقال"}</Label>
@@ -428,7 +422,6 @@ export const EnhancedBlogEditor = () => {
                   </div>
                 </TabsContent>
                 
-                {/* Tags & Metadata */}
                 <TabsContent value="metadata" className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>

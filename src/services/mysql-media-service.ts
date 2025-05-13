@@ -1,18 +1,6 @@
 
 import { query, queryOne, execute } from '@/lib/mysql';
-
-export interface MediaItem {
-  id: number;
-  name: string;
-  original_name: string;
-  mime_type: string;
-  size: number;
-  path: string;
-  url: string;
-  folder: string;
-  created_at: string;
-  updated_at: string;
-}
+import { MediaItem } from '@/types/mediaItem';
 
 // Get all media items
 export const getMediaItems = async (folder?: string): Promise<MediaItem[]> => {

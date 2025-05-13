@@ -1,6 +1,6 @@
 
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { LanguageProvider } from '@/context/LanguageContext';
@@ -15,7 +15,7 @@ const queryClient = new QueryClient();
 createRoot(document.getElementById("root")!).render(
   <Router>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="ahjbu-theme">
+      <ThemeProvider>
         <LanguageProvider>
           <AuthProvider>
             <App />
@@ -26,4 +26,3 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </Router>
 );
-
