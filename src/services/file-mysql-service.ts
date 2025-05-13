@@ -2,7 +2,7 @@
 import { File as FileType } from '@/types/file';
 import { toast } from '@/components/ui/use-toast';
 
-interface MediaItem {
+export interface MediaItem {
   id: number;
   name: string;
   original_name: string;
@@ -12,6 +12,7 @@ interface MediaItem {
   url: string;
   folder: string;
   created_at: string;
+  updated_at?: string;
 }
 
 // Base API URL for file operations

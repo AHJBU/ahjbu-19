@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLanguage } from "@/context/LanguageContext";
@@ -36,6 +35,11 @@ import { AITextGeneration } from "@/components/ai/AITextGeneration";
 interface AITranslationProps {
   onTranslateToEnglish: (data: { title: string; excerpt: string; content: string }) => void;
   onTranslateToArabic: (data: { titleAr: string; excerptAr: string; contentAr: string }) => void;
+}
+
+interface AITextGenerationProps {
+  title: string;
+  onGeneratedContent: (generatedText: string) => void;
 }
 
 export const EnhancedBlogEditor = () => {

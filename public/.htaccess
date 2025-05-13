@@ -1,0 +1,23 @@
+
+# Enable the RewriteEngine
+RewriteEngine On
+RewriteBase /
+
+# Set proper MIME types
+AddType application/javascript .js
+AddType application/javascript .mjs
+AddType text/javascript .js
+AddType text/javascript .mjs
+
+# If the requested resource doesn't exist as a file or directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rewrite all requests to the root index.html
+RewriteRule ^(.*)$ index.html [QSA,L]
+
+# Set security headers
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-XSS-Protection "1; mode=block"
+</IfModule>
