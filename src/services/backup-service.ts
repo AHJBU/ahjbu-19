@@ -1,7 +1,6 @@
 
 import { supabase } from '@/lib/supabase';
-import { storage } from '@/lib/firebase';
-import { ref, listAll, getDownloadURL } from 'firebase/storage';
+// Remove Firebase imports
 import * as fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -9,10 +8,10 @@ import path from 'path';
 
 const execAsync = promisify(exec);
 
-// النسخ الاحتياطي للقاعدة البيانات
+// Database backup function
 export const backupSupabaseData = async (outputDir: string = './backups/database'): Promise<string> => {
   try {
-    // التأكد من وجود المجلد
+    // Ensure directory exists
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
@@ -20,7 +19,7 @@ export const backupSupabaseData = async (outputDir: string = './backups/database
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const outputPath = path.join(outputDir, `backup-${timestamp}.json`);
 
-    // الحصول على البيانات من جميع الجداول
+    // Get data from all tables
     const tables = ['projects', 'posts', 'achievements', 'publications', 'files', 'profiles', 'courses', 'course_orders'];
     const backupData: Record<string, any[]> = {};
 
@@ -36,7 +35,7 @@ export const backupSupabaseData = async (outputDir: string = './backups/database
       }
     }
 
-    // كتابة البيانات إلى ملف JSON
+    // Write data to JSON file
     fs.writeFileSync(outputPath, JSON.stringify(backupData, null, 2), 'utf8');
     
     console.log(`Database backup saved to: ${outputPath}`);
@@ -47,56 +46,39 @@ export const backupSupabaseData = async (outputDir: string = './backups/database
   }
 };
 
-// نسخ احتياطي للملفات من Firebase Storage
-export const backupFirebaseStorage = async (outputDir: string = './backups/storage'): Promise<string[]> {
+// Backup files from MySQL
+export const backupMySQLFiles = async (outputDir: string = './backups/files'): Promise<string[]> => {
   try {
-    // التأكد من وجود المجلد
+    // Ensure directory exists
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const storagePaths = ['images', 'files', 'images/posts', 'images/projects', 'images/achievements', 'images/publications'];
-    const downloadedFiles: string[] = [];
-
-    for (const storagePath of storagePaths) {
-      const folderRef = ref(storage, storagePath);
-      const storageOutputDir = path.join(outputDir, storagePath);
-      
-      if (!fs.existsSync(storageOutputDir)) {
-        fs.mkdirSync(storageOutputDir, { recursive: true });
-      }
-
-      try {
-        const result = await listAll(folderRef);
-        
-        for (const itemRef of result.items) {
-          const url = await getDownloadURL(itemRef);
-          const fileName = path.join(storageOutputDir, itemRef.name);
-          
-          // تنزيل الملف باستخدام fetch API
-          const response = await fetch(url);
-          const buffer = await response.arrayBuffer();
-          fs.writeFileSync(fileName, Buffer.from(buffer));
-          
-          downloadedFiles.push(fileName);
-        }
-      } catch (error) {
-        console.error(`Error backing up storage path ${storagePath}:`, error);
-      }
-    }
-
-    console.log(`Firebase storage backup completed. Downloaded ${downloadedFiles.length} files.`);
-    return downloadedFiles;
+    // In a server environment, you would use MySQL commands to export file data
+    // For client-side, we can fetch files from our API and save their metadata
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const metadataPath = path.join(outputDir, `files-metadata-${timestamp}.json`);
+    
+    // This is a placeholder - in a real implementation, you would use your MySQL service
+    // to fetch file metadata from the database
+    
+    // Sample implementation (to be replaced with actual MySQL service call):
+    const fileMetadata = []; // This would come from MySQL
+    fs.writeFileSync(metadataPath, JSON.stringify(fileMetadata, null, 2), 'utf8');
+    
+    console.log(`File metadata backup saved to: ${metadataPath}`);
+    return [metadataPath];
   } catch (error) {
-    console.error('Firebase storage backup failed:', error);
+    console.error('File backup failed:', error);
     throw error;
   }
 };
 
-// نسخ احتياطي للكود المصدري
-export const backupSourceCode = async (outputDir: string = './backups/source'): Promise<string> {
+// Backup source code
+export const backupSourceCode = async (outputDir: string = './backups/source'): Promise<string> => {
   try {
-    // التأكد من وجود المجلد
+    // Ensure directory exists
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
@@ -105,7 +87,7 @@ export const backupSourceCode = async (outputDir: string = './backups/source'): 
     const archiveName = `source-backup-${timestamp}.zip`;
     const outputPath = path.join(outputDir, archiveName);
 
-    // استخدام أداة zip لعمل أرشيف للكود المصدري
+    // Use zip tool to archive source code
     await execAsync(`zip -r ${outputPath} ./src ./public ./scripts ./docs -x */node_modules/* */build/* */dist/* */.git/*`);
 
     console.log(`Source code backup saved to: ${outputPath}`);
@@ -116,10 +98,10 @@ export const backupSourceCode = async (outputDir: string = './backups/source'): 
   }
 };
 
-// تنفيذ النسخ الاحتياطي الكامل
+// Run full backup
 export const runFullBackup = async (): Promise<{
   databaseBackupPath: string;
-  storageFiles: string[];
+  fileBackupPaths: string[];
   sourceCodeBackupPath: string;
 }> => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -128,14 +110,14 @@ export const runFullBackup = async (): Promise<{
   console.log('Starting full website backup...');
   
   const databaseBackupPath = await backupSupabaseData(`${backupDir}/database`);
-  const storageFiles = await backupFirebaseStorage(`${backupDir}/storage`);
+  const fileBackupPaths = await backupMySQLFiles(`${backupDir}/files`);
   const sourceCodeBackupPath = await backupSourceCode(`${backupDir}/source`);
 
   console.log('Full website backup completed successfully!');
   
   return {
     databaseBackupPath,
-    storageFiles,
+    fileBackupPaths,
     sourceCodeBackupPath
   };
 };

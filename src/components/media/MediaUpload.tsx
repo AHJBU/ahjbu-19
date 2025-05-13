@@ -8,9 +8,10 @@ import { toast } from "@/components/ui/use-toast";
 
 interface MediaUploadProps {
   onUploadComplete?: () => void;
+  folder?: string;
 }
 
-export function MediaUpload({ onUploadComplete }: MediaUploadProps) {
+export function MediaUpload({ onUploadComplete, folder = "files" }: MediaUploadProps) {
   const { language } = useLanguage();
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -44,7 +45,7 @@ export function MediaUpload({ onUploadComplete }: MediaUploadProps) {
       // Upload to server
       const xhr = new XMLHttpRequest();
       
-      xhr.open("POST", "/api/upload");
+      xhr.open("POST", `/api/upload/${folder}`);
       
       // Track upload progress
       xhr.upload.addEventListener("progress", (event) => {
@@ -56,7 +57,7 @@ export function MediaUpload({ onUploadComplete }: MediaUploadProps) {
 
       // Handle completion
       xhr.onload = () => {
-        if (xhr.status === 200) {
+        if (xhr.status >= 200 && xhr.status < 300) {
           const response = JSON.parse(xhr.responseText);
           toast({
             title: language === "en" ? "Upload Complete" : "تم الرفع",

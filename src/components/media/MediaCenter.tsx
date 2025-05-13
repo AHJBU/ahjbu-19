@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MediaUpload } from "./MediaUpload";
 import { Search, Trash2, Download, Check } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { getMediaItems, deleteMediaItem, MediaItem } from "@/services/mysql-media-service";
+import { getMediaFromFolder, deleteFile, MediaItem } from "@/services/file-mysql-service";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 
@@ -20,13 +20,15 @@ export function MediaCenter({ onSelect, mediaType = "all" }: MediaCenterProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
 
+  // Fetch media items from MySQL API
   const { data: mediaItems = [], isLoading } = useQuery({
     queryKey: ['mediaItems', mediaType],
-    queryFn: () => getMediaItems(mediaType !== "all" ? mediaType : undefined),
+    queryFn: () => getMediaFromFolder(mediaType !== "all" ? mediaType : "files"),
   });
 
+  // Delete mutation using MySQL API
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteMediaItem(id),
+    mutationFn: (path: string) => deleteFile(path),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mediaItems'] });
       toast({
@@ -36,9 +38,9 @@ export function MediaCenter({ onSelect, mediaType = "all" }: MediaCenterProps) {
     },
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (item: MediaItem) => {
     if (confirm(language === "en" ? "Are you sure you want to delete this media?" : "هل أنت متأكد من أنك تريد حذف هذه الوسائط؟")) {
-      deleteMutation.mutate(id);
+      deleteMutation.mutate(item.path);
     }
   };
 
@@ -70,7 +72,10 @@ export function MediaCenter({ onSelect, mediaType = "all" }: MediaCenterProps) {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <MediaUpload onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ['mediaItems'] })} />
+        <MediaUpload 
+          onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ['mediaItems'] })}
+          folder={mediaType !== "all" ? mediaType : "files"}
+        />
       </div>
 
       <Tabs defaultValue="all">
@@ -111,7 +116,7 @@ export function MediaCenter({ onSelect, mediaType = "all" }: MediaCenterProps) {
 
 function renderMediaGrid(
   items: MediaItem[],
-  onDelete: (id: number) => void,
+  onDelete: (item: MediaItem) => void,
   onSelect: (url: string) => void,
   language: string
 ) {
@@ -159,7 +164,7 @@ function renderMediaGrid(
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {items.map((item) => (
         <div
-          key={item.id}
+          key={item.id || item.path}
           className="group relative border rounded-md overflow-hidden"
         >
           <div className="aspect-square overflow-hidden bg-muted">
@@ -189,7 +194,7 @@ function renderMediaGrid(
                 size="sm"
                 variant="outline"
                 className="bg-white text-black hover:bg-white/80"
-                onClick={() => onDelete(item.id)}
+                onClick={() => onDelete(item)}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

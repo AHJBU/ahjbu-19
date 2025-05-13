@@ -1,4 +1,11 @@
 
+// This file is kept for backwards compatibility
+// The application now uses MySQL for file storage instead of Firebase
+
+// If you need to access the old Firebase API, you can uncomment the code below
+// However, all components should now be using the MySQL API
+
+/*
 import { initializeApp } from "firebase/app";
 import { getStorage } from "firebase/storage";
 
@@ -18,3 +25,10 @@ const app = initializeApp(firebaseConfig);
 const storage = getStorage(app);
 
 export { storage };
+*/
+
+// Export a dummy storage object to prevent breaking existing code
+export const storage = null;
+
+// Log a warning if this file is imported
+console.warn("Firebase is deprecated in this project. Please use MySQL services instead.");
