@@ -288,7 +288,7 @@ export const EnhancedBlogEditor = () => {
               </div>
               
               <div className="space-y-6">
-                {/* We're adapting the AITranslation component for backwards compatibility */}
+                {/* Fixed AITranslation component usage */}
                 {post && (
                   <div>
                     <h4 className="text-sm font-medium mb-2 flex items-center">
@@ -296,30 +296,31 @@ export const EnhancedBlogEditor = () => {
                       {language === "en" ? "AI Translation" : "الترجمة الذكية"}
                     </h4>
                     <AITranslation 
-                      text={{
-                        title: title,
-                        titleAr: titleAr,
-                        excerpt: excerpt,
-                        excerptAr: excerptAr,
-                        content: content,
-                        contentAr: contentAr
-                      }}
-                      onTranslate={(direction, data) => {
+                      text={content || contentAr}
+                      onTranslate={(direction: string, translatedText: string) => {
                         if (direction === "toEnglish") {
-                          handleTranslateToEnglish(data);
+                          handleTranslateToEnglish({
+                            title: post.titleAr || "",
+                            excerpt: post.excerptAr || "",
+                            content: translatedText
+                          });
                         } else {
-                          handleTranslateToArabic(data);
+                          handleTranslateToArabic({
+                            title: post.title || "",
+                            excerpt: post.excerpt || "",
+                            content: translatedText
+                          });
                         }
                       }}
                     />
                   </div>
                 )}
 
-                {/* Adapting AITextGeneration component for backwards compatibility */}
+                {/* Fixed AITextGeneration component usage */}
                 <AITextGeneration 
                   title={title}
                   prompt=""
-                  onGenerated={handleGeneratedContent}
+                  onGenerateContent={handleGeneratedContent}
                 />
               </div>
             </div>

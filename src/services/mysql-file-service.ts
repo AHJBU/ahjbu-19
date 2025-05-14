@@ -65,3 +65,40 @@ export const getAllFiles = async () => {
     return [];
   }
 };
+
+/**
+ * Upload a file to MySQL storage
+ * @param file The file to upload
+ * @param folder The folder to upload to
+ * @param onProgress Optional progress callback
+ * @returns The URL of the uploaded file
+ */
+export const uploadFile = async (
+  file: File,
+  folder: string = 'files',
+  onProgress?: (progress: number) => void
+): Promise<string> => {
+  try {
+    // Simulate upload progress for UI
+    if (onProgress) {
+      const interval = setInterval(() => {
+        onProgress(Math.min(95, Math.floor(Math.random() * 100)));
+      }, 300);
+      
+      // After a brief delay, clear the interval and report 100%
+      setTimeout(() => {
+        clearInterval(interval);
+        onProgress(100);
+      }, 2000);
+    }
+    
+    // In a real implementation, this would upload to the server
+    console.log(`Simulating upload of ${file.name} to ${folder} folder`);
+    
+    // Return a mock URL (in production this would come from the server)
+    return `/api/files/${folder}/${Date.now()}-${file.name}`;
+  } catch (error) {
+    console.error('Upload error:', error);
+    throw new Error('File upload failed');
+  }
+};

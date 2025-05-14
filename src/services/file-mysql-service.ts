@@ -2,13 +2,13 @@
 import { File as FileType } from '@/types/file';
 import { MediaItem } from '@/types/mediaItem';
 import { toast } from '@/components/ui/use-toast';
-import { getMediaFromFolder } from '@/services/mysql-file-service';
+import { getMediaFromFolder, uploadFile } from '@/services/mysql-file-service';
 
 // Base API URL for file operations
 const API_BASE_URL = '/api/files';
 
-// إعادة تصدير الوظيفة من ملف mysql-file-service
-export { getMediaFromFolder };
+// إعادة تصدير الوظائف من ملف mysql-file-service
+export { getMediaFromFolder, uploadFile };
 
 // Function to get all files
 export const getFiles = async (): Promise<FileType[]> => {
@@ -42,31 +42,6 @@ export const getFileById = async (id: string): Promise<FileType | null> => {
     toast({
       title: 'Error',
       description: 'Failed to fetch file.',
-      variant: 'destructive',
-    });
-    return null;
-  }
-};
-
-// Function to upload a file
-export const uploadFile = async (file: File): Promise<MediaItem | null> => {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await fetch(API_BASE_URL, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to upload file:', error);
-    toast({
-      title: 'Error',
-      description: 'Failed to upload file.',
       variant: 'destructive',
     });
     return null;

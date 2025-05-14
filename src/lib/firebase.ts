@@ -10,7 +10,18 @@
 console.warn("Firebase is deprecated in this project. Please use MySQL services instead.");
 
 // Export dummy values to prevent breaking imports
-export const storage = null;
+export const storage = {
+  ref: () => ({
+    listAll: () => Promise.resolve({ items: [] }),
+    put: () => ({
+      on: () => {},
+      then: () => Promise.resolve()
+    }),
+    getDownloadURL: () => Promise.resolve(""),
+    delete: () => Promise.resolve()
+  }),
+  child: () => ({})
+};
 
 // Empty export to satisfy module requirements
 export const firebaseApp = null;
