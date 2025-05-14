@@ -235,11 +235,19 @@ export const EnhancedBlogEditor = () => {
     setIsDirty(true);
   };
 
-  const handleTranslateToArabic = (data: { titleAr: string, excerptAr: string, contentAr: string }) => {
-    setTitleAr(data.titleAr);
-    setExcerptAr(data.excerptAr);
-    setContentAr(data.contentAr);
-    setIsDirty(true);
+  const handleTranslateToArabic = (data: { title: string; excerpt: string; content: string }) => {
+    const transformedData = {
+      titleAr: data.title,
+      excerptAr: data.excerpt,
+      contentAr: data.content
+    };
+    
+    setPost({
+      ...post,
+      titleAr: transformedData.titleAr,
+      excerptAr: transformedData.excerptAr,
+      contentAr: transformedData.contentAr
+    });
   };
 
   const handleGeneratedContent = (generatedText: string) => {
@@ -316,8 +324,10 @@ export const EnhancedBlogEditor = () => {
                 </div>
 
                 <AITextGeneration 
-                  title={language === 'en' ? 'Generate Content' : 'إنشاء محتوى'}
-                  onGeneratedContent={handleGeneratedContent}
+                  title={post.title} 
+                  onGeneratedContent={(generatedText) => {
+                    setPost({...post, content: generatedText});
+                  }}
                 />
               </div>
             </div>
