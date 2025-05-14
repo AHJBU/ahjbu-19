@@ -1,9 +1,14 @@
+
 import { File as FileType } from '@/types/file';
 import { MediaItem } from '@/types/mediaItem';
 import { toast } from '@/components/ui/use-toast';
+import { getMediaFromFolder } from '@/services/mysql-file-service';
 
 // Base API URL for file operations
 const API_BASE_URL = '/api/files';
+
+// إعادة تصدير الوظيفة من ملف mysql-file-service
+export { getMediaFromFolder };
 
 // Function to get all files
 export const getFiles = async (): Promise<FileType[]> => {

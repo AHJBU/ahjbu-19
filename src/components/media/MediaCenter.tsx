@@ -6,9 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MediaUpload } from "./MediaUpload";
 import { Search, Trash2, Download, Check } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { getMediaFromFolder, deleteFile, MediaItem } from "@/services/file-mysql-service";
+import { getMediaFromFolder } from "@/services/mysql-file-service";
+import { deleteFile } from "@/services/file-mysql-service";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
+import { MediaItem } from "@/types/mediaItem";
 
 interface MediaCenterProps {
   onSelect?: (url: string) => void;
