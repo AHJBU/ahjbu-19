@@ -32,16 +32,6 @@ import { WordPressImporter } from "@/components/editor/WordPressImporter";
 import { AITranslation } from "@/components/ai/AITranslation";
 import { AITextGeneration } from "@/components/ai/AITextGeneration";
 
-interface AITranslationProps {
-  onTranslateToEnglish: (data: { title: string; excerpt: string; content: string }) => void;
-  onTranslateToArabic: (data: { titleAr: string; excerptAr: string; contentAr: string }) => void;
-}
-
-interface AITextGenerationProps {
-  title: string;
-  onGeneratedContent: (generatedText: string) => void;
-}
-
 export const EnhancedBlogEditor = () => {
   const { language } = useLanguage();
   const navigate = useNavigate();
@@ -236,18 +226,10 @@ export const EnhancedBlogEditor = () => {
   };
 
   const handleTranslateToArabic = (data: { title: string; excerpt: string; content: string }) => {
-    const transformedData = {
-      titleAr: data.title,
-      excerptAr: data.excerpt,
-      contentAr: data.content
-    };
-    
-    setPost({
-      ...post,
-      titleAr: transformedData.titleAr,
-      excerptAr: transformedData.excerptAr,
-      contentAr: transformedData.contentAr
-    });
+    setTitleAr(data.title);
+    setExcerptAr(data.excerpt);
+    setContentAr(data.content);
+    setIsDirty(true);
   };
 
   const handleGeneratedContent = (generatedText: string) => {
@@ -306,28 +288,38 @@ export const EnhancedBlogEditor = () => {
               </div>
               
               <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-medium mb-2 flex items-center">
-                    <Languages className="h-4 w-4 mr-2" />
-                    {language === "en" ? "AI Translation" : "الترجمة الذكية"}
-                  </h4>
-                  <AITranslation 
-                    title={title}
-                    titleAr={titleAr}
-                    excerpt={excerpt}
-                    excerptAr={excerptAr}
-                    content={content}
-                    contentAr={contentAr}
-                    onTranslateToEnglish={handleTranslateToEnglish}
-                    onTranslateToArabic={handleTranslateToArabic}
-                  />
-                </div>
+                {/* We're adapting the AITranslation component for backwards compatibility */}
+                {post && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center">
+                      <Languages className="h-4 w-4 mr-2" />
+                      {language === "en" ? "AI Translation" : "الترجمة الذكية"}
+                    </h4>
+                    <AITranslation 
+                      text={{
+                        title: title,
+                        titleAr: titleAr,
+                        excerpt: excerpt,
+                        excerptAr: excerptAr,
+                        content: content,
+                        contentAr: contentAr
+                      }}
+                      onTranslate={(direction, data) => {
+                        if (direction === "toEnglish") {
+                          handleTranslateToEnglish(data);
+                        } else {
+                          handleTranslateToArabic(data);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
 
+                {/* Adapting AITextGeneration component for backwards compatibility */}
                 <AITextGeneration 
-                  title={post.title} 
-                  onGeneratedContent={(generatedText) => {
-                    setPost({...post, content: generatedText});
-                  }}
+                  title={title}
+                  prompt=""
+                  onGenerated={handleGeneratedContent}
                 />
               </div>
             </div>

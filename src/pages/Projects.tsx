@@ -21,10 +21,13 @@ const Projects = () => {
     queryFn: getProjects
   });
 
-  // Extract unique categories from projects, making sure to check for undefined
-  const categories = ["all", ...new Set(projects.map(project => project.category || "uncategorized").filter(Boolean))];
+  // Extract unique categories from projects
+  const categories = ["all", ...new Set(projects
+    .map(project => project.category)
+    .filter(Boolean)
+  )];
 
-  // Filter projects based on active category, handling missing category property
+  // Filter projects based on active category
   const filteredProjects = activeCategory === "all"
     ? projects
     : projects.filter(project => project.category === activeCategory);

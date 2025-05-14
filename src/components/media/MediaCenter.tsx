@@ -25,12 +25,12 @@ export function MediaCenter({ onSelect, mediaType = "all" }: MediaCenterProps) {
   // Fetch media items from MySQL API
   const { data: mediaItems = [], isLoading } = useQuery({
     queryKey: ['mediaItems', mediaType],
-    queryFn: () => getMediaFromFolder(mediaType !== "all" ? mediaType : "files"),
+    queryFn: () => getMediaFromFolder(mediaType !== "all" ? mediaType : undefined),
   });
 
   // Delete mutation using MySQL API
   const deleteMutation = useMutation({
-    mutationFn: (path: string) => deleteFile(path),
+    mutationFn: (id: number | string) => deleteFile(String(id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mediaItems'] });
       toast({
@@ -42,7 +42,7 @@ export function MediaCenter({ onSelect, mediaType = "all" }: MediaCenterProps) {
 
   const handleDelete = (item: MediaItem) => {
     if (confirm(language === "en" ? "Are you sure you want to delete this media?" : "هل أنت متأكد من أنك تريد حذف هذه الوسائط؟")) {
-      deleteMutation.mutate(item.path);
+      deleteMutation.mutate(item.id);
     }
   };
 
@@ -54,13 +54,17 @@ export function MediaCenter({ onSelect, mediaType = "all" }: MediaCenterProps) {
 
   // Filter media by search term
   const filteredMedia = mediaItems.filter((item) => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     item.original_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Group by mime type
   const images = filteredMedia.filter(item => item.mime_type.startsWith('image/'));
   const videos = filteredMedia.filter(item => item.mime_type.startsWith('video/'));
-  const documents = filteredMedia.filter(item => item.mime_type.startsWith('application/') || item.mime_type.startsWith('text/'));
+  const documents = filteredMedia.filter(item => 
+    item.mime_type.startsWith('application/') || 
+    item.mime_type.startsWith('text/')
+  );
 
   return (
     <div className="space-y-4">
