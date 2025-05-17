@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
 type LanguageType = "en" | "ar";
 
@@ -27,6 +27,22 @@ const translations = {
   email: { en: "Email", ar: "البريد الإلكتروني" },
   message: { en: "Message", ar: "الرسالة" },
   search: { en: "Search", ar: "بحث" },
+  
+  // Additional translations for EnhancedBlogEditor
+  translationComplete: { en: "Translation complete", ar: "اكتملت الترجمة" },
+  translationApplied: { en: "Translation applied", ar: "تم تطبيق الترجمة" },
+  generationComplete: { en: "Generation complete", ar: "اكتمل التوليد" },
+  contentGenerated: { en: "Content generated", ar: "تم توليد المحتوى" },
+  title: { en: "Title", ar: "العنوان" },
+  enterTitle: { en: "Enter title...", ar: "أدخل العنوان..." },
+  contentType: { en: "Content Type", ar: "نوع المحتوى" },
+  content: { en: "Content", ar: "المحتوى" },
+  excerpt: { en: "Excerpt", ar: "مقتطف" },
+  showTranslation: { en: "Show Translation Tool", ar: "إظهار أداة الترجمة" },
+  showAIGenerator: { en: "Show AI Generator", ar: "إظهار مولد الذكاء الاصطناعي" },
+  aiPrompt: { en: "AI Prompt", ar: "طلب الذكاء الاصطناعي" },
+  enterPrompt: { en: "Enter your prompt...", ar: "أدخل طلبك..." },
+  generateContent: { en: "Generate Content", ar: "توليد المحتوى" },
 };
 
 export interface LanguageContextType {
@@ -45,23 +61,23 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return savedLanguage || "ar"; // Default to Arabic
   });
 
+  // Set the direction attribute on mount and when language changes
+  useEffect(() => {
+    if (language === "ar") {
+      document.documentElement.dir = "rtl";
+      document.documentElement.lang = "ar";
+    } else {
+      document.documentElement.dir = "ltr";
+      document.documentElement.lang = "en";
+    }
+  }, [language]);
+
   // Function to toggle between languages
   const toggleLanguage = () => {
     const newLanguage = language === "en" ? "ar" : "en";
     setLanguage(newLanguage);
     localStorage.setItem("language", newLanguage);
-    document.documentElement.dir = newLanguage === "ar" ? "rtl" : "ltr";
-    document.documentElement.lang = newLanguage;
   };
-
-  // Set the direction attribute based on language
-  if (language === "ar") {
-    document.documentElement.dir = "rtl";
-    document.documentElement.lang = "ar";
-  } else {
-    document.documentElement.dir = "ltr";
-    document.documentElement.lang = "en";
-  }
 
   // Translation function
   const t = (key: keyof typeof translations) => {

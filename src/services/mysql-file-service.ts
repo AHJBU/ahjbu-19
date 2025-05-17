@@ -17,8 +17,25 @@ export const getMediaFromFolder = async (folder?: string): Promise<MediaItem[]> 
   }
   
   try {
-    const results = await query<MediaItem>(sql, params);
-    return results || [];
+    const results = await query<any>(sql, params);
+    
+    // Map database results to MediaItem interface
+    return (results || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      original_name: item.original_name,
+      mime_type: item.mime_type,
+      size: item.size || 0,
+      path: item.path,
+      url: item.url,
+      folder: item.folder,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      // Add properties needed by legacy code
+      fullPath: item.path || '',
+      contentType: item.mime_type || '',
+      timeCreated: item.created_at || new Date().toISOString()
+    }));
   } catch (error) {
     console.error('Error fetching media from folder:', error);
     return [];

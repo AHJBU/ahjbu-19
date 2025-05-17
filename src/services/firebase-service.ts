@@ -11,6 +11,9 @@ import { storage } from "@/lib/firebase";
 import { MediaItem } from "@/types/mediaItem";
 import { getMediaFromFolder as getMySQLMedia, uploadFile as uploadMySQLFile } from '@/services/mysql-file-service';
 
+// Export MediaItem type for backwards compatibility
+export type { MediaItem };
+
 // DEPRECATED: Get all media from a specific folder (Fallback to MySQL)
 export const getMediaFromFolder = async (folderPath: string): Promise<MediaItem[]> => {
   console.warn("firebase-service is deprecated. Using MySQL service instead.");

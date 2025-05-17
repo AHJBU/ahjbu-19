@@ -10,5 +10,5 @@ export interface ProjectType {
   tags: string[];
   featured: boolean;
   date: string;
-  category: string;  // Make sure category exists
+  category: string;  // Added category property
 }
