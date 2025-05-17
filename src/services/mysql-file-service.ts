@@ -102,3 +102,40 @@ export const uploadFile = async (
     throw new Error('File upload failed');
   }
 };
+
+/**
+ * Delete a file from MySQL storage
+ * @param fullPath The path of the file to delete
+ */
+export const deleteFile = async (fullPath: string): Promise<void> => {
+  try {
+    console.log(`Would delete file at path: ${fullPath}`);
+    // In a real implementation, this would delete the file via API
+  } catch (error) {
+    console.error('Delete error:', error);
+    throw new Error('File delete failed');
+  }
+};
+
+/**
+ * Get a file by path from MySQL storage
+ * @param fullPath The path of the file to get
+ * @returns The media item
+ */
+export const getFile = async (fullPath: string): Promise<MediaItem> => {
+  try {
+    console.log(`Would get file at path: ${fullPath}`);
+    // In a real implementation, this would get the file via API
+    return {
+      name: fullPath.split('/').pop() || '',
+      url: `/api/files/${fullPath}`,
+      fullPath,
+      contentType: '',
+      size: 0,
+      timeCreated: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Get file error:', error);
+    throw new Error('File get failed');
+  }
+};

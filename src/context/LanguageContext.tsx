@@ -42,7 +42,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<LanguageType>(() => {
     // Try to get the language from localStorage
     const savedLanguage = localStorage.getItem("language") as LanguageType;
-    return savedLanguage || "en"; // Default to English
+    return savedLanguage || "ar"; // Default to Arabic
   });
 
   // Function to toggle between languages
