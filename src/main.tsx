@@ -8,6 +8,11 @@ import { AuthProvider } from '@/context/AuthContext';
 import App from './App.tsx';
 import './index.css';
 
+// Create a container for Radix portals
+function RadixPortalRoot() {
+  return <div id="radix-portal-root" />;
+}
+
 // Create a query client
 const queryClient = new QueryClient();
 
@@ -18,6 +23,7 @@ createRoot(document.getElementById("root")!).render(
         <LanguageProvider>
           <AuthProvider>
             <App />
+            <RadixPortalRoot />
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>
